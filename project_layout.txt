@@ -1,0 +1,448 @@
+================================================================================
+SIMULADOR DE AMPLIFICADORES OPERACIONALES
+Project Layout & Implementation Guide
+================================================================================
+
+FOLDER STRUCTURE
+----------------
+Proyecto-HSP/
+├── src/
+│   ├── amplificadores/
+│   │   ├── base.py
+│   │   ├── inversor.py
+│   │   ├── no_inversor.py
+│   │   ├── seguidor.py
+│   │   └── comparador.py
+│   ├── simulacion/
+│   │   ├── simulador.py
+│   │   └── monte_carlo.py
+│   ├── visualizacion/
+│   │   └── visualizador.py
+│   └── reporte/
+│       └── generador.py
+├── outputs/
+│   ├── graficas/        <- saved .png plots go here
+│   └── reportes/        <- exported report files go here
+├── tests/
+│   ├── test_amplificadores.py
+│   ├── test_monte_carlo.py
+│   └── test_simulador.py
+├── main.py
+├── requirements.txt
+└── project_layout.txt   <- this file
+
+DEPENDENCIES (implement in this order)
+---------------------------------------
+base.py
+  -> inversor.py, no_inversor.py, seguidor.py, comparador.py
+    -> monte_carlo.py
+      -> simulador.py
+        -> visualizador.py
+          -> generador.py
+            -> main.py
+
+================================================================================
+FILE-BY-FILE IMPLEMENTATION GUIDE
+================================================================================
+
+--------------------------------------------------------------------------------
+src/amplificadores/base.py
+--------------------------------------------------------------------------------
+PURPOSE: Abstract base class. Defines shared interface for all amp configs.
+
+IMPLEMENT:
+  Class: AmplificadorBase (ABC)
+
+  Private attributes (with getters/setters):
+    _nombre       : str   - config name
+    _r1           : float - resistance R1 (ohms)
+    _r2           : float - resistance R2 (ohms)
+    _gbw          : float - gain-bandwidth product (Hz), default 1e6 (1 MHz)
+    _vcc          : float - supply voltage (V), default 15.0
+
+  Abstract methods (must be overridden by subclasses):
+    calcular_ganancia() -> float
+      Returns voltage gain Av (dimensionless, not in dB)
+
+    calcular_salida(vin: float) -> float
+      Returns output voltage for a given input voltage
+
+  Concrete methods (shared by all subclasses):
+    ganancia_db() -> float
+      Returns 20 * log10(|calcular_ganancia()|)
+
+    calcular_fc() -> float
+      Returns cutoff frequency: fc = GBW / |Av|
+
+    calcular_ancho_banda() -> float
+      Returns bandwidth = fc (same formula, alias for clarity)
+
+    respuesta_frecuencia(f_min=1, f_max=1e7, n_puntos=500) -> (freqs, magnitud_db, fase_deg)
+      Generates Bode data arrays:
+        freqs        : numpy array, log-spaced from f_min to f_max
+        magnitud_db  : 20*log10(|H(f)|) where H(f) = Av / (1 + j*f/fc)
+        fase_deg     : angle of H(f) in degrees
+
+    __str__() -> str
+      Returns formatted summary: name, R1, R2, Av, fc
+
+  NOTES:
+    - Use abc.ABC and abc.abstractmethod
+    - Private attrs use double underscore prefix: self.__r1
+    - Getters: @property, Setters: @attr.setter with validation (> 0)
+
+--------------------------------------------------------------------------------
+src/amplificadores/inversor.py
+--------------------------------------------------------------------------------
+PURPOSE: Inverting amplifier configuration.
+
+IMPLEMENT:
+  Class: AmpInversor(AmplificadorBase)
+
+  Constructor __init__(r1, r2, gbw=1e6, vcc=15.0):
+    Call super().__init__() with nombre="Amplificador Inversor"
+
+  calcular_ganancia() -> float
+    Returns: -r2 / r1
+    (negative = phase inversion)
+
+  calcular_salida(vin: float) -> float
+    Returns: calcular_ganancia() * vin
+    Clip output to [-vcc, +vcc]
+
+  NOTES:
+    - Gain is negative by definition
+    - ganancia_db() in base uses abs value, so dB is still positive
+
+--------------------------------------------------------------------------------
+src/amplificadores/no_inversor.py
+--------------------------------------------------------------------------------
+PURPOSE: Non-inverting amplifier configuration.
+
+IMPLEMENT:
+  Class: AmpNoInversor(AmplificadorBase)
+
+  Constructor __init__(r1, r2, gbw=1e6, vcc=15.0):
+    Call super().__init__() with nombre="Amplificador No Inversor"
+
+  calcular_ganancia() -> float
+    Returns: 1 + r2 / r1
+
+  calcular_salida(vin: float) -> float
+    Returns: calcular_ganancia() * vin
+    Clip output to [-vcc, +vcc]
+
+--------------------------------------------------------------------------------
+src/amplificadores/seguidor.py
+--------------------------------------------------------------------------------
+PURPOSE: Voltage follower / buffer. Special case of non-inverting with Av = 1.
+
+IMPLEMENT:
+  Class: SeguidorVoltaje(AmplificadorBase)
+
+  Constructor __init__(gbw=1e6, vcc=15.0):
+    R1 = inf (use float('inf') or very large value 1e12)
+    R2 = 0
+    nombre = "Seguidor de Voltaje (Buffer)"
+    Call super().__init__() with fixed R1, R2
+
+  calcular_ganancia() -> float
+    Returns: 1.0  (always, regardless of R1/R2)
+
+  calcular_salida(vin: float) -> float
+    Returns: vin
+    Clip to [-vcc, +vcc]
+
+  calcular_fc() -> float (override)
+    Returns: gbw  (bandwidth = full GBW since Av = 1)
+
+  NOTES:
+    - Override setters for R1/R2 to raise ValueError (not configurable)
+    - Highest bandwidth of all 4 configs (key talking point for presentation)
+
+--------------------------------------------------------------------------------
+src/amplificadores/comparador.py
+--------------------------------------------------------------------------------
+PURPOSE: Comparator. Digital output, compares Vin vs Vref.
+
+IMPLEMENT:
+  Class: Comparador(AmplificadorBase)
+
+  Private attributes (add to base):
+    _vref         : float - reference voltage (V), default 0.0
+
+  Constructor __init__(vref=0.0, gbw=1e6, vcc=15.0):
+    R1 = 1.0, R2 = 0.0 (not relevant for comparator)
+    nombre = "Comparador"
+
+  calcular_ganancia() -> float
+    Returns: float('inf')  (open-loop, no feedback)
+
+  calcular_salida(vin: float) -> float
+    Returns: vcc if vin > vref else 0.0
+    (rail-to-rail digital output)
+
+  calcular_tiempo_respuesta() -> float
+    Returns: 1 / gbw  (simplified: propagation delay estimate)
+
+  calcular_histeresis(delta_v: float) -> dict
+    Returns dict with:
+      umbral_alto : vref + delta_v / 2
+      umbral_bajo : vref - delta_v / 2
+      ventana     : delta_v
+
+  respuesta_con_ruido(vin: float, ruido_std: float, n_muestras=1000) -> dict
+    Add gaussian noise to vin, run calcular_salida() for each sample.
+    Returns dict with:
+      prob_alto   : fraction of samples where output = vcc
+      prob_bajo   : fraction of samples where output = 0
+      n_muestras  : n_muestras
+
+  NOTES:
+    - calcular_fc() and respuesta_frecuencia() not meaningful for comparator
+      Override to raise NotImplementedError with clear message
+    - Bode plot not generated for this class
+
+--------------------------------------------------------------------------------
+src/simulacion/simulador.py
+--------------------------------------------------------------------------------
+PURPOSE: Orchestrator. Runs all analyses across all amp configurations.
+
+IMPLEMENT:
+  Class: SimuladorCircuito
+
+  Constructor __init__():
+    self._amplificadores : list  - holds amp instances
+    self._resultados     : dict  - stores all analysis results keyed by amp name
+
+  add_amplificador(amp: AmplificadorBase):
+    Append amp to self._amplificadores
+
+  ejecutar_analisis_completo():
+    For each amplificador in self._amplificadores:
+      Store in self._resultados[amp.nombre]:
+        ganancia      : amp.calcular_ganancia()
+        ganancia_db   : amp.ganancia_db()
+        fc            : amp.calcular_fc()
+        ancho_banda   : amp.calcular_ancho_banda()
+        bode          : amp.respuesta_frecuencia()  (skip for Comparador)
+
+  get_resultados() -> dict
+    Returns self._resultados
+
+  comparar_anchos_banda() -> dict
+    Returns {nombre: ancho_banda} for all amps (skip Comparador)
+
+  resumen_ganancias() -> dict
+    Returns {nombre: (ganancia, ganancia_db)} for all amps
+
+  NOTES:
+    - Use isinstance(amp, Comparador) to skip Bode for comparator
+    - Results dict feeds directly into VisualizadorResultados
+
+--------------------------------------------------------------------------------
+src/simulacion/monte_carlo.py
+--------------------------------------------------------------------------------
+PURPOSE: Stochastic analysis. Evaluates gain distribution under component tolerances.
+
+IMPLEMENT:
+  Class: AnalizadorMonteCarlo
+
+  Constructor __init__(n_muestras=1000):
+    self._n_muestras    : int   - number of MC samples
+    self._resultados_mc : dict  - stores results per amp per tolerance
+
+  ejecutar(amp: AmplificadorBase, tolerancias=[0.01, 0.05, 0.10]) -> dict:
+    For each tolerance level t:
+      Generate n_muestras variations of R1 and R2:
+        r1_samples = numpy.random.normal(amp.r1, amp.r1 * t, n_muestras)
+        r2_samples = numpy.random.normal(amp.r2, amp.r2 * t, n_muestras)
+      Compute gain for each sample pair using amp's gain formula directly
+        (do NOT instantiate new amp objects per sample - compute formula inline)
+      Store per tolerance:
+        ganancias   : array of gain values
+        media       : mean of ganancias
+        std         : std deviation
+        prob_fallo  : fraction outside [media - 3*std_nominal, media + 3*std_nominal]
+                      where std_nominal = std at 1% tolerance (use as spec limit)
+    Store full results in self._resultados_mc[amp.nombre]
+    Return results dict
+
+  curva_convergencia(amp: AmplificadorBase, tolerancia=0.05, max_muestras=1000) -> dict:
+    Run MC incrementally: for n in [10, 20, 50, 100, 200, 500, 1000, max_muestras]:
+      Compute mean and std of gain with n samples at given tolerance
+    Returns:
+      n_muestras  : list of sample counts
+      medias      : list of mean values
+      sigmas      : list of std values
+
+  get_resultados() -> dict:
+    Returns self._resultados_mc
+
+  NOTES:
+    - Use numpy.random.normal exclusively (not random module)
+    - Comparador gain is inf, skip MC for it or handle with try/except
+    - SeguidorVoltaje gain always = 1, MC still valid (verify R independence)
+
+--------------------------------------------------------------------------------
+src/visualizacion/visualizador.py
+--------------------------------------------------------------------------------
+PURPOSE: All plots. Consumes data from SimuladorCircuito and AnalizadorMonteCarlo.
+
+IMPLEMENT:
+  Class: VisualizadorResultados
+
+  Constructor __init__(output_dir="outputs/graficas"):
+    self._output_dir : str - directory to save .png files
+    Create output_dir if not exists (os.makedirs)
+
+  plot_bode(amp: AmplificadorBase, guardar=True):
+    2-subplot figure (magnitude top, phase bottom)
+    X axis: frequency (Hz), log scale
+    Top: magnitude in dB vs frequency
+    Bottom: phase in degrees vs frequency
+    Title: "Diagrama de Bode - {amp.nombre}"
+    Mark fc with vertical dashed line
+    Save as "bode_{amp.nombre}.png"
+
+  plot_histograma_mc(resultados_mc: dict, amp_nombre: str, guardar=True):
+    One figure with 3 subplots (one per tolerance: 1%, 5%, 10%)
+    Each subplot: histogram of gain distribution (n_bins=50)
+    Show mean and +/-3sigma vertical lines
+    Title: "Monte Carlo - {amp_nombre}"
+    Save as "mc_{amp_nombre}.png"
+
+  plot_comparacion_ancho_banda(comparacion: dict, guardar=True):
+    Horizontal bar chart
+    X axis: bandwidth (Hz), log scale
+    Y axis: amp names
+    Title: "Comparacion de Ancho de Banda"
+    Different color per bar
+    Save as "comparacion_bw.png"
+
+  plot_convergencia(convergencia: dict, amp_nombre: str, guardar=True):
+    2-subplot figure
+    Top: mean vs number of samples (with reference line at nominal gain)
+    Bottom: sigma vs number of samples
+    X axis: number of samples (log scale)
+    Title: "Convergencia Monte Carlo - {amp_nombre}"
+    Save as "convergencia_{amp_nombre}.png"
+
+  plot_heatmap_ganancia(amp_class, r1_range, r2_range, guardar=True):
+    2D heatmap (imshow or pcolormesh)
+    X axis: R2 values, Y axis: R1 values
+    Color: gain magnitude (dB)
+    amp_class: class reference (AmpInversor or AmpNoInversor)
+    r1_range: array of R1 values to sweep
+    r2_range: array of R2 values to sweep
+    Title: "Mapa de Calor - Ganancia vs R1/R2 ({amp_class.__name__})"
+    Add colorbar with label "Ganancia (dB)"
+    Save as "heatmap_{amp_class.__name__}.png"
+
+  NOTES:
+    - All plots: plt.tight_layout() before save
+    - Use plt.close() after each save to free memory
+    - guardar=False: call plt.show() instead of saving
+    - Style: use plt.style.use('seaborn-v0_8') or 'ggplot'
+
+--------------------------------------------------------------------------------
+src/reporte/generador.py
+--------------------------------------------------------------------------------
+PURPOSE: Export simulation results to human-readable text report file.
+
+IMPLEMENT:
+  Class: GeneradorReporte
+
+  Constructor __init__(output_dir="outputs/reportes"):
+    self._output_dir : str
+
+  generar(resultados: dict, resultados_mc: dict, filename="reporte.txt"):
+    Write structured report to outputs/reportes/{filename}
+
+    Report sections:
+      1. Header: title, date/time, separator line
+      2. Per-amp summary:
+           Nombre, R1, R2, Ganancia (lineal), Ganancia (dB), fc, Ancho de banda
+      3. Monte Carlo summary per amp:
+           Per tolerance: media, std, prob_fallo (%)
+      4. Comparative table: all amps side by side (bandwidth comparison)
+      5. Footer: timestamp
+
+  NOTES:
+    - Use datetime.datetime.now() for timestamp
+    - Plain text format, no external libs needed
+    - Align columns with string formatting (f-strings or format())
+
+--------------------------------------------------------------------------------
+main.py
+--------------------------------------------------------------------------------
+PURPOSE: Entry point. Wires all modules, runs full demo.
+
+IMPLEMENT:
+  1. Create amp instances:
+       inv    = AmpInversor(r1=1000, r2=10000)        # Av = -10
+       no_inv = AmpNoInversor(r1=1000, r2=10000)      # Av = 11
+       buf    = SeguidorVoltaje()                      # Av = 1
+       comp   = Comparador(vref=2.5, vcc=15.0)        # digital
+
+  2. Create SimuladorCircuito, add all 4 amps, run ejecutar_analisis_completo()
+
+  3. Create AnalizadorMonteCarlo(n_muestras=1000)
+     Run MC for inversor, no_inversor, seguidor (skip comparador)
+     Run curva_convergencia for AmpInversor
+
+  4. Create VisualizadorResultados
+     - plot_bode for each amp (skip comparador)
+     - plot_histograma_mc for each MC result
+     - plot_comparacion_ancho_banda
+     - plot_convergencia for inversor
+     - plot_heatmap_ganancia for AmpInversor and AmpNoInversor
+
+  5. Create GeneradorReporte, call generar()
+
+  6. Print summary to console: all gains, fc values, bandwidth
+
+================================================================================
+KEY FORMULAS REFERENCE
+================================================================================
+
+  Gain (linear):
+    AmpInversor     : Av = -R2 / R1
+    AmpNoInversor   : Av = 1 + R2 / R1
+    SeguidorVoltaje : Av = 1
+    Comparador      : Av = inf (open loop)
+
+  Gain (dB):
+    Av_dB = 20 * log10(|Av|)
+
+  Cutoff frequency:
+    fc = GBW / |Av|
+    (SeguidorVoltaje: fc = GBW since |Av| = 1)
+
+  Transfer function (1st order lowpass model):
+    H(f) = Av / (1 + j * f / fc)
+
+  Bode magnitude:
+    |H(f)|_dB = 20 * log10(|Av|) - 20 * log10(sqrt(1 + (f/fc)^2))
+
+  Bode phase:
+    angle(H(f)) = -arctan(f / fc)   [degrees]
+
+  Monte Carlo sampling:
+    R1_sample ~ Normal(R1_nominal, R1_nominal * tolerance)
+    R2_sample ~ Normal(R2_nominal, R2_nominal * tolerance)
+
+================================================================================
+LIBRARIES
+================================================================================
+
+  numpy       : arrays, log-space frequency, random sampling, math ops
+  scipy       : (optional) signal.bode for transfer functions if needed
+  matplotlib  : all plots (pyplot, cm for heatmap colormap)
+  abc         : ABC, abstractmethod for base class
+  os          : path creation for output dirs
+  datetime    : timestamps in report
+
+  Install: pip install numpy scipy matplotlib
+
+================================================================================
