@@ -1,3 +1,7 @@
+# Visualizador de resultados: genera todas las graficas del proyecto.
+# Cada metodo produce una figura diferente y la guarda como .png en outputs/graficas/.
+# Si guardar=False, muestra la figura en pantalla en lugar de guardarla.
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,20 +9,35 @@ import matplotlib.cm as cm
 
 from src.amplificadores.base import AmplificadorBase
 
+# Estilo visual consistente para todas las graficas
 plt.style.use('ggplot')
 
 
 class VisualizadorResultados:
+    """
+    Genera y guarda todas las graficas del simulador.
+    Recibe datos del SimuladorCircuito y del AnalizadorMonteCarlo
+    y los convierte en imagenes listas para el reporte.
+
+    Args:
+        output_dir: carpeta donde se guardan los .png (se crea si no existe)
+    """
 
     def __init__(self, output_dir: str = "outputs/graficas"):
         self._output_dir = output_dir
+        # Creamos la carpeta de salida si no existe todavia
         os.makedirs(output_dir, exist_ok=True)
 
-    # ------------------------------------------------------------------
-    # Utilidades privadas
-    # ------------------------------------------------------------------
-
     def _guardar_o_mostrar(self, nombre_archivo: str, guardar: bool):
+        """
+        Cierre estandar de cada figura: aplica layout ajustado y
+        guarda o muestra segun el parametro guardar.
+        Siempre llama plt.close() para liberar memoria.
+
+        Args:
+            nombre_archivo : nombre del archivo .png a guardar
+            guardar        : True = guardar en disco, False = mostrar en pantalla
+        """
         plt.tight_layout()
         if guardar:
             ruta = os.path.join(self._output_dir, nombre_archivo)
@@ -26,34 +45,40 @@ class VisualizadorResultados:
             print(f"  Guardado: {ruta}")
         else:
             plt.show()
+        # Cerramos la figura para que no se acumule en memoria
         plt.close()
-
-    # ------------------------------------------------------------------
-    # Diagrama de Bode
-    # ------------------------------------------------------------------
 
     def plot_bode(self, amp: AmplificadorBase, guardar: bool = True):
         """
-        Genera diagrama de Bode de 2 paneles: magnitud (dB) y fase (grados).
-        Marca la frecuencia de corte fc con linea vertical punteada.
+        Genera el diagrama de Bode del amplificador: magnitud y fase vs frecuencia.
+        Panel superior: magnitud en dB (muestra como cae la ganancia con la frecuencia).
+        Panel inferior: fase en grados (muestra el desfase que introduce el amp).
+        La linea roja punteada marca la frecuencia de corte fc.
+
+        Args:
+            amp     : amplificador a graficar (debe tener respuesta_frecuencia())
+            guardar : True guarda el png, False lo muestra en pantalla
         """
         freqs, magnitud_db, fase_deg = amp.respuesta_frecuencia()
         fc = amp.calcular_fc()
 
+        # Dos paneles que comparten el mismo eje X de frecuencia
         fig, (ax_mag, ax_fase) = plt.subplots(2, 1, figsize=(9, 6), sharex=True)
         fig.suptitle(f"Diagrama de Bode — {amp.nombre}", fontsize=13, fontweight='bold')
 
-        # Panel superior: magnitud
+        # Panel superior: magnitud en dB
         ax_mag.semilogx(freqs, magnitud_db, linewidth=2, color='steelblue')
+        # Linea vertical en fc — donde la ganancia cae 3 dB respecto al valor maximo
         ax_mag.axvline(fc, color='tomato', linestyle='--', linewidth=1.4,
                        label=f'fc = {fc:,.0f} Hz')
+        # Linea horizontal en Av_dB - 3 para marcar visualmente el punto de -3dB
         ax_mag.axhline(amp.ganancia_db() - 3, color='gray', linestyle=':', linewidth=1,
                        label='-3 dB')
         ax_mag.set_ylabel("Magnitud (dB)")
         ax_mag.legend(fontsize=9)
         ax_mag.grid(True, which='both', alpha=0.4)
 
-        # Panel inferior: fase
+        # Panel inferior: fase en grados
         ax_fase.semilogx(freqs, fase_deg, linewidth=2, color='darkorange')
         ax_fase.axvline(fc, color='tomato', linestyle='--', linewidth=1.4)
         ax_fase.set_ylabel("Fase (grados)")
@@ -63,14 +88,17 @@ class VisualizadorResultados:
         nombre_archivo = f"bode_{amp.nombre.replace(' ', '_')}.png"
         self._guardar_o_mostrar(nombre_archivo, guardar)
 
-    # ------------------------------------------------------------------
-    # Histograma Monte Carlo
-    # ------------------------------------------------------------------
-
     def plot_histograma_mc(self, resultados_mc: dict, amp_nombre: str, guardar: bool = True):
         """
-        3 subplots (uno por tolerancia: 1%, 5%, 10%).
-        Cada subplot muestra histograma de ganancia + lineas de media y +-3sigma.
+        Muestra la distribucion de ganancia bajo variacion de tolerancias.
+        Un subplot por nivel de tolerancia (1%, 5%, 10%) lado a lado.
+        Las lineas verticales muestran la media y los limites de +-3 sigma.
+        El titulo de cada subplot indica la probabilidad de fallo.
+
+        Args:
+            resultados_mc : dict de resultados MC indexado por tolerancia
+            amp_nombre    : nombre del amplificador para el titulo
+            guardar       : True guarda, False muestra
         """
         tolerancias = sorted(resultados_mc.keys())
         colores = ['steelblue', 'darkorange', 'seagreen']
@@ -85,15 +113,19 @@ class VisualizadorResultados:
             std     = datos['std']
             p_fallo = datos['prob_fallo']
 
+            # Histograma de la distribucion de ganancias
             ax.hist(g, bins=50, color=color, alpha=0.75, edgecolor='white')
-            ax.axvline(media,         color='black',  linestyle='-',  linewidth=1.8,
-                       label=f'Media = {media:.3f}')
-            ax.axvline(media + 3*std, color='crimson', linestyle='--', linewidth=1.2,
-                       label=f'+3σ = {media+3*std:.3f}')
-            ax.axvline(media - 3*std, color='crimson', linestyle='--', linewidth=1.2,
-                       label=f'-3σ = {media-3*std:.3f}')
 
-            ax.set_title(f"Tolerancia ±{int(tol*100)}%\nP(fallo) = {p_fallo:.1%}", fontsize=10)
+            # Linea negra en la media
+            ax.axvline(media, color='black', linestyle='-', linewidth=1.8,
+                       label=f'Media = {media:.3f}')
+            # Lineas rojas en media +/- 3 sigma (limites de especificacion)
+            ax.axvline(media + 3*std, color='crimson', linestyle='--', linewidth=1.2,
+                       label=f'+3s = {media+3*std:.3f}')
+            ax.axvline(media - 3*std, color='crimson', linestyle='--', linewidth=1.2,
+                       label=f'-3s = {media-3*std:.3f}')
+
+            ax.set_title(f"Tolerancia +-{int(tol*100)}%\nP(fallo) = {p_fallo:.1%}", fontsize=10)
             ax.set_xlabel("Ganancia Av")
             ax.set_ylabel("Frecuencia")
             ax.legend(fontsize=7)
@@ -101,14 +133,16 @@ class VisualizadorResultados:
         nombre_archivo = f"mc_{amp_nombre.replace(' ', '_')}.png"
         self._guardar_o_mostrar(nombre_archivo, guardar)
 
-    # ------------------------------------------------------------------
-    # Comparacion de ancho de banda
-    # ------------------------------------------------------------------
-
     def plot_comparacion_ancho_banda(self, comparacion: dict, guardar: bool = True):
         """
-        Grafica de barras horizontales comparando BW de todas las configuraciones.
-        Escala logaritmica en X para visualizar diferencias de ordenes de magnitud.
+        Grafica de barras horizontales comparando el ancho de banda de cada config.
+        Usa escala logaritmica en X porque los valores difieren en ordenes de magnitud
+        (ej. 10 kHz vs 1 MHz no se aprecian bien en escala lineal).
+        Cada barra tiene un color distinto y muestra el valor en Hz al costado.
+
+        Args:
+            comparacion : dict {nombre_amp: ancho_banda_hz}
+            guardar     : True guarda, False muestra
         """
         nombres = list(comparacion.keys())
         valores = list(comparacion.values())
@@ -116,36 +150,45 @@ class VisualizadorResultados:
 
         fig, ax = plt.subplots(figsize=(9, 4))
         bars = ax.barh(nombres, valores, color=colores, edgecolor='white', height=0.5)
+
+        # Escala log para que las diferencias grandes sean visibles
         ax.set_xscale('log')
         ax.set_xlabel("Ancho de Banda (Hz)")
         ax.set_title("Comparacion de Ancho de Banda", fontsize=13, fontweight='bold')
         ax.grid(True, axis='x', alpha=0.4)
 
-        # Etiqueta de valor sobre cada barra
+        # Etiqueta numerica al lado derecho de cada barra
         for bar, val in zip(bars, valores):
             ax.text(val * 1.05, bar.get_y() + bar.get_height() / 2,
                     f'{val:,.0f} Hz', va='center', fontsize=9)
 
         self._guardar_o_mostrar("comparacion_bw.png", guardar)
 
-    # ------------------------------------------------------------------
-    # Curva de convergencia Monte Carlo
-    # ------------------------------------------------------------------
-
     def plot_convergencia(self, convergencia: dict, amp_nombre: str, guardar: bool = True):
         """
-        2 paneles: media y sigma vs numero de muestras (eje X log).
-        Linea de referencia en la media nominal (valor con N maximo).
+        Muestra como la media y la sigma del analisis MC se estabilizan
+        al aumentar el numero de muestras. Con pocas muestras los valores
+        son inestables — la curva muestra cuando ya son suficientemente confiables.
+
+        Panel superior: media de ganancia vs N muestras.
+        Panel inferior: sigma vs N muestras.
+        La linea de referencia en el panel superior es el valor con N maximo.
+
+        Args:
+            convergencia : dict con n_muestras, medias, sigmas
+            amp_nombre   : nombre del amplificador para el titulo
+            guardar      : True guarda, False muestra
         """
         n      = convergencia['n_muestras']
         medias = convergencia['medias']
         sigmas = convergencia['sigmas']
+        # Tomamos el ultimo valor de media como referencia (el mas estable)
         media_ref = medias[-1]
 
         fig, (ax_med, ax_sig) = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
         fig.suptitle(f"Convergencia Monte Carlo — {amp_nombre}", fontsize=13, fontweight='bold')
 
-        # Panel superior: media
+        # Panel superior: como converge la media
         ax_med.semilogx(n, medias, 'o-', color='steelblue', linewidth=2, markersize=5)
         ax_med.axhline(media_ref, color='tomato', linestyle='--', linewidth=1.2,
                        label=f'Referencia = {media_ref:.4f}')
@@ -153,18 +196,14 @@ class VisualizadorResultados:
         ax_med.legend(fontsize=9)
         ax_med.grid(True, which='both', alpha=0.4)
 
-        # Panel inferior: sigma
+        # Panel inferior: como converge la sigma
         ax_sig.semilogx(n, sigmas, 's-', color='darkorange', linewidth=2, markersize=5)
-        ax_sig.set_ylabel("Desv. Estandar (σ)")
+        ax_sig.set_ylabel("Desv. Estandar (sigma)")
         ax_sig.set_xlabel("Numero de Muestras")
         ax_sig.grid(True, which='both', alpha=0.4)
 
         nombre_archivo = f"convergencia_{amp_nombre.replace(' ', '_')}.png"
         self._guardar_o_mostrar(nombre_archivo, guardar)
-
-    # ------------------------------------------------------------------
-    # Mapa de calor: ganancia vs R1 / R2
-    # ------------------------------------------------------------------
 
     def plot_heatmap_ganancia(
         self,
@@ -174,24 +213,37 @@ class VisualizadorResultados:
         guardar: bool = True,
     ):
         """
-        Mapa de calor 2D: ganancia en dB para todo el espacio R1/R2.
-        Calcula la ganancia instanciando un amp temporal por celda usando
-        meshgrid vectorizado — eficiente para rangos moderados.
+        Mapa de calor 2D que muestra la ganancia en dB para todas las
+        combinaciones posibles de R1 y R2 en los rangos dados.
+        Muy util para visualizar como la ganancia cambia con los componentes
+        y para elegir valores de resistencias en el diseno.
+
+        Usa meshgrid de numpy para calcular toda la matriz de golpe,
+        sin necesidad de iterar con loops.
+
+        Args:
+            amp_class : clase del amplificador (AmpInversor o AmpNoInversor)
+            r1_range  : array de valores de R1 a barrer en ohms
+            r2_range  : array de valores de R2 a barrer en ohms
+            guardar   : True guarda, False muestra
         """
+        # Meshgrid crea matrices 2D con todas las combinaciones de R1 y R2
         R1, R2 = np.meshgrid(r1_range, r2_range)
 
-        # Calculo vectorizado segun clase
+        # Aplicamos la formula de ganancia vectorizada segun la clase
         amp_name = amp_class.__name__
         if amp_name == 'AmpInversor':
-            Av = -R2 / R1
+            Av = -R2 / R1          # Av = -R2/R1
         elif amp_name == 'AmpNoInversor':
-            Av = 1 + R2 / R1
+            Av = 1 + R2 / R1       # Av = 1 + R2/R1
         else:
             raise ValueError(f"Heatmap no soportado para {amp_name}.")
 
+        # Convertimos a dB para la escala de color
         Av_db = 20 * np.log10(np.abs(Av))
 
         fig, ax = plt.subplots(figsize=(8, 6))
+        # pcolormesh es mas rapido que imshow para datos no uniformes
         heatmap = ax.pcolormesh(r2_range, r1_range, Av_db, cmap='viridis', shading='auto')
         cbar = fig.colorbar(heatmap, ax=ax)
         cbar.set_label("Ganancia (dB)", fontsize=10)
