@@ -1,0 +1,236 @@
+@startuml secuencia
+skinparam sequenceArrowThickness 2
+skinparam sequenceParticipantBorderColor #333
+skinparam sequenceLifeLineBorderColor #666
+skinparam sequenceMessageAlign center
+
+' ============================================================
+' DIAGRAMA DE SECUENCIA - Simulador de Amplificadores Operacionales
+' ============================================================
+' Muestra el flujo de mensajes entre objetos a lo largo del tiempo.
+' Se lee de arriba hacia abajo: cada flecha es una llamada o retorno.
+'
+' Notacion de flechas:
+'   ->    llamada sincrona (el emisor espera respuesta)
+'   -->   retorno de una llamada
+'
+' Notacion de bloques:
+'   loop        repeticion (equivale a un for/while)
+'   alt         condicional (equivale a un if/else)
+'   activate    objeto esta procesando (barra de vida activa)
+'   deactivate  objeto termino de procesar
+'   note        anotacion explicativa sobre el diagrama
+'   ==texto==   separador de fase/etapa
+' ============================================================
+
+title Flujo de Ejecucion - Simulador de Op-Amps
+
+' --- Participantes del sistema ---
+' actor      = entidad externa (el usuario que ejecuta el programa)
+' participant = objeto o modulo interno del sistema
+
+actor Usuario
+
+' Punto de entrada, coordina todo el flujo
+participant "main.py" as Main
+
+' Representacion generica de las 4 clases de amplificadores
+participant "AmpInversor\n/ AmpNoInversor\n/ SeguidorVoltaje\n/ Comparador" as Amp
+
+' Orquestador: ejecuta analisis sobre todos los amps registrados
+participant "SimuladorCircuito" as Sim
+
+' Analisis estadistico con variacion de tolerancias
+participant "AnalizadorMonteCarlo" as MC
+
+' Generacion de todas las graficas Matplotlib
+participant "VisualizadorResultados" as Viz
+
+' Exportacion de resultados a archivo de texto
+participant "GeneradorReporte" as Rep
+
+
+' ============================================================
+' FASE 1: CONFIGURACION
+' Se definen los escenarios y se crean las instancias de amps.
+' GBW y Vcc son constantes del op-amp ideal.
+' R1/R2 varian por escenario para demostrar diferentes ganancias.
+' ============================================================
+== Configuracion ==
+
+Usuario -> Main : ejecutar main.py
+
+' Escenarios predefinidos en codigo.
+' Cada escenario define un par R1/R2 que determina la ganancia del circuito.
+' GBW y Vcc son constantes del op-amp ideal, no configurables por escenario.
+note over Main
+  escenarios = [
+    {nombre: Ganancia baja,  r1: 1000, r2: 10000},
+    {nombre: Ganancia media, r1: 1000, r2: 47000},
+    {nombre: Ganancia alta,  r1: 1000, r2: 100000}
+  ]
+  gbw = 1e6 Hz, vcc = 15.0 V
+end note
+
+' Para cada escenario se crean 4 instancias (una por configuracion)
+' y se registran en el simulador. El simulador se reinicia por escenario.
+loop para cada escenario (3 iteraciones)
+
+  ' Cada subclase recibe r1/r2 del escenario y las constantes gbw/vcc
+  Main -> Amp : __init__(r1, r2, gbw=1e6, vcc=15.0) x4
+  activate Amp
+  Amp --> Main : instancias creadas (Inversor, NoInversor, Seguidor, Comparador)
+  deactivate Amp
+
+  ' SimuladorCircuito actua como contenedor: recibe los amps ya creados
+  Main -> Sim : __init__()
+  activate Sim
+  Main -> Sim : add_amplificador(amp) x4
+  Sim --> Main : amps registrados en lista interna
+  deactivate Sim
+
+end
+
+
+' ============================================================
+' FASE 2: ANALISIS PRINCIPAL
+' El simulador recorre cada amp y ejecuta todos los calculos.
+' Comparador se excluye del Bode: salida digital, sin respuesta en frecuencia.
+' ============================================================
+== Analisis Principal ==
+
+' El loop por escenario sigue activo en esta fase
+Main -> Sim : ejecutar_analisis_completo()
+activate Sim
+
+loop para cada amplificador en la lista (4 amps)
+
+  Sim -> Amp : calcular_ganancia()
+  ' Av puede ser negativo en Inversor (inversion de fase)
+  Amp --> Sim : Av
+
+  Sim -> Amp : ganancia_db()
+  ' Av_dB = 20 * log10(|Av|)
+  Amp --> Sim : Av_dB
+
+  Sim -> Amp : calcular_fc()
+  ' fc = GBW / |Av|  (frecuencia de corte en Hz)
+  Amp --> Sim : fc
+
+  Sim -> Amp : calcular_ancho_banda()
+  ' BW = fc para este modelo de primer orden
+  Amp --> Sim : BW
+
+  ' Bode solo aplica a amps con respuesta en frecuencia continua.
+  ' Comparador tiene salida digital: su Bode no tiene sentido fisico.
+  alt amp NO es Comparador
+    Sim -> Amp : respuesta_frecuencia()
+    Amp --> Sim : (freqs[], magnitud_dB[], fase_deg[])
+  end
+
+end
+
+Sim --> Main : resultados completos por amp y escenario
+deactivate Sim
+
+
+' ============================================================
+' FASE 3: MONTE CARLO
+' Evalua como las tolerancias de R1/R2 afectan la ganancia real.
+' Variacion Normal aplicada a cada resistencia; ganancia recalculada por muestra.
+' Comparador excluido: ganancia lazo abierto (infinita), MC no aplica.
+' ============================================================
+== Monte Carlo ==
+
+Main -> MC : __init__(n_muestras=1000)
+activate MC
+
+loop para cada amp (3 amps: Inversor, NoInversor, Seguidor)
+
+  Main -> MC : ejecutar(amp, tolerancias=[0.01, 0.05, 0.10])
+  activate MC
+
+  ' Para cada nivel de tolerancia se generan 1000 pares (R1, R2) aleatorios
+  loop para cada tolerancia (1%, 5%, 10%)
+    MC -> MC : r1_samples = normal(r1_nominal, r1_nominal * tol, 1000)
+    MC -> MC : r2_samples = normal(r2_nominal, r2_nominal * tol, 1000)
+    MC -> MC : calcular ganancia para cada par de muestras
+    MC -> MC : calcular media, std y prob_fallo
+  end
+
+  MC --> Main : resultados_mc[amp] por tolerancia
+  deactivate MC
+
+end
+
+' Curva de convergencia: muestra cuantas muestras se necesitan
+' para estabilizar media y sigma. Solo para AmpInversor como ejemplo.
+Main -> MC : curva_convergencia(amp_inversor, tolerancia=0.05)
+MC --> Main : {n_muestras[], medias[], sigmas[]}
+deactivate MC
+
+
+' ============================================================
+' FASE 4: VISUALIZACION
+' Genera y guarda todas las graficas en outputs/graficas/
+' Cada metodo produce un archivo .png independiente.
+' ============================================================
+== Visualizacion ==
+
+Main -> Viz : __init__(output_dir="outputs/graficas")
+activate Viz
+
+' Bode: magnitud (dB) y fase (grados) vs frecuencia (1 Hz a 10 MHz)
+loop para cada amp excepto Comparador (3 amps)
+  Main -> Viz : plot_bode(amp)
+  Viz --> Main : bode_{nombre}.png guardado
+end
+
+' Histograma: distribucion de ganancia por nivel de tolerancia
+loop para cada resultado MC (3 amps)
+  Main -> Viz : plot_histograma_mc(resultados_mc, amp_nombre)
+  Viz --> Main : mc_{nombre}.png guardado
+end
+
+' Grafica comparativa: ancho de banda de las 4 configuraciones
+Main -> Viz : plot_comparacion_ancho_banda(comparacion)
+Viz --> Main : comparacion_bw.png guardado
+
+' Convergencia: como estabilizan media y sigma al aumentar N muestras
+Main -> Viz : plot_convergencia(convergencia, amp_nombre="AmpInversor")
+Viz --> Main : convergencia_AmpInversor.png guardado
+
+' Heatmap: ganancia en dB para todo el espacio R1/R2
+' Solo para configs con ganancia variable (Inversor y NoInversor)
+Main -> Viz : plot_heatmap_ganancia(AmpInversor, r1_range, r2_range)
+Viz --> Main : heatmap_AmpInversor.png guardado
+
+Main -> Viz : plot_heatmap_ganancia(AmpNoInversor, r1_range, r2_range)
+Viz --> Main : heatmap_AmpNoInversor.png guardado
+
+deactivate Viz
+
+
+' ============================================================
+' FASE 5: REPORTE
+' Exporta resumen numerico a texto plano en outputs/reportes/
+' ============================================================
+== Reporte ==
+
+Main -> Rep : __init__(output_dir="outputs/reportes")
+activate Rep
+
+Main -> Rep : generar(resultados, resultados_mc, filename="reporte.txt")
+
+' El reporte escribe seccionalmente
+Rep -> Rep : escribir header con fecha y hora
+Rep -> Rep : escribir tabla de ganancias y fc por amp y escenario
+Rep -> Rep : escribir estadisticas Monte Carlo (media, std, prob_fallo)
+Rep -> Rep : escribir tabla comparativa de ancho de banda
+Rep --> Main : reporte.txt guardado
+
+deactivate Rep
+
+Main --> Usuario : Simulacion completa. Graficas y reporte en outputs/
+
+@enduml

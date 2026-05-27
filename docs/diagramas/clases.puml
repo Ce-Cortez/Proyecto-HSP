@@ -1,0 +1,192 @@
+@startuml clases
+skinparam classAttributeIconSize 0
+skinparam classFontStyle Bold
+skinparam linetype ortho
+
+' ============================================================
+' DIAGRAMA DE CLASES - Simulador de Amplificadores Operacionales
+' ============================================================
+' Notacion de visibilidad:
+'   -  privado   (solo accesible dentro de la clase)
+'   +  publico   (accesible desde cualquier clase)
+'   #  protegido (accesible en clase y subclases)
+'
+' Notacion de relaciones (ver leyenda al final):
+'   <|--   Herencia   (la subclase ES UN tipo de la superclase)
+'   *--    Composicion (el objeto FORMA PARTE de otro, no existe sin el)
+'   o--    Agregacion  (el objeto ES CONTENIDO por otro, pero existe independiente)
+'   ..>    Dependencia (una clase USA a otra, sin contenerla)
+' ============================================================
+
+
+' ------------------------------------------------------------
+' CAPA 1: CLASE BASE ABSTRACTA
+' Define la interfaz comun para todos los amplificadores.
+' No se puede instanciar directamente.
+' ------------------------------------------------------------
+abstract class AmplificadorBase {
+  ' --- Atributos privados (encapsulados) ---
+  ' Solo accesibles via getters/setters (properties)
+  - __nombre : str
+  - __r1 : float
+  - __r2 : float
+  - __gbw : float
+  - __vcc : float
+  --
+  ' --- Getters y Setters (properties de Python) ---
+  + nombre : str <<property>>
+  + r1 : float <<property>>
+  + r2 : float <<property>>
+  + gbw : float <<property>>
+  + vcc : float <<property>>
+  --
+  ' --- Metodos abstractos ---
+  ' Cada subclase DEBE implementar estos metodos con su propia logica
+  {abstract} + calcular_ganancia() : float
+  {abstract} + calcular_salida(vin: float) : float
+  --
+  ' --- Metodos concretos (heredados por todas las subclases) ---
+  ' Implementados aqui una sola vez, disponibles en todos los amps
+  + ganancia_db() : float
+  + calcular_fc() : float
+  + calcular_ancho_banda() : float
+  + respuesta_frecuencia(f_min, f_max, n_puntos) : tuple
+  + __str__() : str
+}
+
+
+' ------------------------------------------------------------
+' CAPA 2: SUBCLASES DE AMPLIFICADORES
+' Cada una hereda de AmplificadorBase e implementa
+' su propia formula de ganancia y logica de salida.
+' ------------------------------------------------------------
+
+' Av = -R2 / R1  (invierte la fase de la senal)
+class AmpInversor {
+  --
+  + calcular_ganancia() : float
+  + calcular_salida(vin: float) : float
+}
+
+' Av = 1 + R2 / R1  (amplifica sin invertir)
+class AmpNoInversor {
+  --
+  + calcular_ganancia() : float
+  + calcular_salida(vin: float) : float
+}
+
+' Av = 1 siempre  (buffer de impedancia, R2=0, R1=inf)
+' Maximo ancho de banda de todas las configuraciones
+class SeguidorVoltaje {
+  --
+  + calcular_ganancia() : float
+  + calcular_salida(vin: float) : float
+  ' Sobreescribe calcular_fc(): fc = GBW (ganancia unitaria)
+  + calcular_fc() : float
+}
+
+' Salida digital: Vcc si Vin > Vref, 0V si Vin < Vref
+' Logica distinta al resto: sin Bode, sin ganancia lineal util
+class Comparador {
+  ' Atributo adicional exclusivo del comparador
+  - __vref : float
+  --
+  + vref : float <<property>>
+  --
+  + calcular_ganancia() : float
+  + calcular_salida(vin: float) : float
+  ' Metodos especificos del comparador (no existen en otras subclases)
+  + calcular_tiempo_respuesta() : float
+  + calcular_histeresis(delta_v: float) : dict
+  + respuesta_con_ruido(vin, ruido_std, n_muestras) : dict
+}
+
+
+' ------------------------------------------------------------
+' CAPA 3: SIMULACION Y ANALISIS
+' Clases que orquestan la ejecucion y el analisis estadistico.
+' ------------------------------------------------------------
+
+' Orquestador principal: ejecuta todos los analisis sobre todos los amps
+class SimuladorCircuito {
+  ' Lista de amplificadores registrados (puede contener cualquier subclase)
+  - _amplificadores : list
+  ' Diccionario con resultados indexados por nombre de amplificador
+  - _resultados : dict
+  --
+  + add_amplificador(amp: AmplificadorBase)
+  + ejecutar_analisis_completo()
+  + get_resultados() : dict
+  + comparar_anchos_banda() : dict
+  + resumen_ganancias() : dict
+}
+
+' Simulacion estocastica: evalua impacto de tolerancias en la ganancia
+' Usa distribucion Normal para modelar variabilidad de manufactura
+class AnalizadorMonteCarlo {
+  ' Numero de muestras por corrida (minimo recomendado: 1000)
+  - _n_muestras : int
+  ' Resultados indexados por nombre de amplificador y nivel de tolerancia
+  - _resultados_mc : dict
+  --
+  ' Corre MC para un amp dado, con tolerancias [1%, 5%, 10%]
+  + ejecutar(amp, tolerancias) : dict
+  ' Muestra como converge la media y sigma al aumentar muestras
+  + curva_convergencia(amp, tolerancia, max_muestras) : dict
+  + get_resultados() : dict
+}
+
+
+' ------------------------------------------------------------
+' CAPA 4: SALIDAS (Visualizacion y Reporte)
+' Consumen los resultados; no modifican el estado de la simulacion.
+' ------------------------------------------------------------
+
+' Genera todas las graficas con Matplotlib y las guarda en outputs/graficas/
+class VisualizadorResultados {
+  - _output_dir : str
+  --
+  + plot_bode(amp)
+  + plot_histograma_mc(resultados_mc, amp_nombre)
+  + plot_comparacion_ancho_banda(comparacion)
+  + plot_convergencia(convergencia, amp_nombre)
+  + plot_heatmap_ganancia(amp_class, r1_range, r2_range)
+}
+
+' Exporta resumen numerico a archivo de texto en outputs/reportes/
+class GeneradorReporte {
+  - _output_dir : str
+  --
+  + generar(resultados, resultados_mc, filename)
+}
+
+
+' ============================================================
+' RELACIONES ENTRE CLASES
+' ============================================================
+
+' --- HERENCIA (es-un) ---
+' Las 4 configuraciones SON tipos de AmplificadorBase.
+' Heredan atributos y metodos concretos; sobreescriben los abstractos.
+AmplificadorBase <|-- AmpInversor      : hereda
+AmplificadorBase <|-- AmpNoInversor    : hereda
+AmplificadorBase <|-- SeguidorVoltaje  : hereda
+AmplificadorBase <|-- Comparador       : hereda
+
+' --- AGREGACION (contiene, pero los amps existen independientemente) ---
+' SimuladorCircuito mantiene una lista de amps.
+' Los amps se crean fuera del simulador (en main.py) y se agregan.
+SimuladorCircuito o-- AmplificadorBase : agrega\n(lista de amps)
+
+' --- COMPOSICION (usa y controla el ciclo de vida) ---
+' SimuladorCircuito crea y posee su AnalizadorMonteCarlo interno.
+SimuladorCircuito *-- AnalizadorMonteCarlo : compone\n(crea internamente)
+
+' --- DEPENDENCIA (usa resultados, sin contener) ---
+' Visualizador y Reporte reciben datos como parametros; no guardan referencia.
+VisualizadorResultados ..> SimuladorCircuito   : usa resultados
+VisualizadorResultados ..> AnalizadorMonteCarlo : usa resultados MC
+GeneradorReporte        ..> SimuladorCircuito   : usa resultados
+GeneradorReporte        ..> AnalizadorMonteCarlo : usa resultados MC
+
+@enduml
