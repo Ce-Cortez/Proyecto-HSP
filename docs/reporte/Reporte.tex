@@ -1,4 +1,4 @@
-﻿\documentclass[12pt, letterpaper]{article}
+\documentclass[12pt, letterpaper]{article}
 
 % ── Paquetes ──────────────────────────────────────────────────────────────────
 \usepackage[T1]{fontenc}
@@ -74,17 +74,17 @@
 
     % Materia
     \textbf{Materia:}\\[0.15cm]
-    {\large Herramientas de Programación y Simulación}\\[0.5cm]   % <── nombre de la materia
+    {\large Herramientas de Programación y Simulación}\\[0.5cm]
 
     % Proyecto
     \textcolor{uacjblue}{\rule{0.6\textwidth}{0.8pt}}\\[0.3cm]
     {\LARGE\bfseries Proyecto Final}\\[0.15cm]
-    {\large\textit{Título del Proyecto}}\\[0.3cm]  % <── Cambia el título del proyecto
+    {\large\textit{Simulador de Amplificadores Operacionales con Análisis de Tolerancias mediante Monte Carlo}}\\[0.3cm]
     \textcolor{uacjblue}{\rule{0.6\textwidth}{0.8pt}}\\[0.6cm]
 
     % Información académica en tabla
     \begin{tabular}{r l}
-        \textbf{Docente:}         & Dra. Leticia Ortega Máynez \\[0.25cm]   % <── Nombre del docente
+        \textbf{Docente:}         & Dra. Leticia Ortega Máynez \\[0.25cm]
         \textbf{Alumno(s):}       & Cortez Pando, César Enrique \hfill 267629 \\ % chktex 36
                                   & Moreno López, José Alejandro \hfill 266669 \\[0.25cm]
         \textbf{Fecha de entrega:}& Ciudad Juárez, Chih., \today \\
@@ -98,7 +98,35 @@
 \setcounter{page}{1}
 
 % ══════════════════════════════════════════════════════════════════════════════
-\section{Contexto del Problema}
+\section{Introducción}
+
+El presente trabajo desarrolla un simulador computacional en Python para
+evaluar el efecto de las tolerancias de fabricación de resistencias sobre la
+ganancia y el ancho de banda de circuitos con amplificadores operacionales
+(op-amps). El análisis se aplica a tres configuraciones clásicas —inversor,
+no inversor y seguidor de voltaje— operando con el modelo genérico
+LM741/\(\mu\)A741, % chktex 21
+tomando como referencia un producto ganancia-ancho de banda de
+\(1\,\text{MHz}\) y una alimentación de \(\pm 15\,\text{V}\).
+
+El núcleo del simulador es el método de Monte Carlo: se generan
+\(1{,}000\) pares de resistencias aleatorias por escenario, se calcula la
+ganancia resultante en cada caso y se obtiene la distribución estadística
+del parámetro de interés. Este enfoque permite cuantificar, antes de
+construir cualquier prototipo, qué fracción de unidades de producción
+quedaría fuera de especificación para cada nivel de tolerancia comercial
+(\(\pm 1\,\%\), \(\pm 5\,\%\) y \(\pm 10\,\%\)).
+
+El documento está organizado en trece secciones: definición del problema,
+marco teórico, diseño orientado a objetos del simulador, metodología de
+simulación, tipo de muestreo empleado, detalles de implementación en
+Python, resultados obtenidos, discusión, conclusiones, referencias y
+anexos con el código fuente.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Definición del Problema}
+
+\subsection{Contexto}
 
 Los amplificadores operacionales (op-amps) son componentes fundamentales en el
 diseño de sistemas electrónicos analógicos. Se emplean en una amplia variedad de
@@ -126,8 +154,7 @@ impacto estadístico de las tolerancias mediante el método de Monte Carlo con
 convergencia y diagramas de Bode que permiten evaluar el comportamiento del sistema
 antes de cualquier implementación física.
 
-% ══════════════════════════════════════════════════════════════════════════════
-\section{Importancia del Problema}
+\subsection{Importancia del Problema}
 
 El análisis del efecto de las tolerancias en amplificadores operacionales tiene
 relevancia en múltiples dimensiones.
@@ -160,8 +187,240 @@ variabilidad del sistema y fomenta el uso de herramientas computacionales modern
 en la formación de ingenieros. El presente proyecto contribuye a ese objetivo al
 integrar Python como entorno de simulación reproducible y documentado.
 
+\subsection{Objetivo de la Simulación}
+
+\textbf{Objetivo general.}
+Cuantificar el impacto estadístico de las tolerancias de fabricación de las
+resistencias externas sobre la ganancia de tres configuraciones clásicas de
+amplificadores operacionales —inversor, no inversor y seguidor de voltaje—
+mediante el método de Monte Carlo implementado en Python, con el fin de
+proporcionar información probabilística que respalde la selección
+de componentes antes de cualquier implementación física.
+
+\textbf{Objetivos específicos:}
+
+\begin{itemize}[leftmargin=2em]
+    \item Modelar la respuesta en frecuencia del op-amp LM741/\(\mu\)A741 % chktex 21
+          mediante una función de transferencia de primer orden que incorpore
+          el producto ganancia-ancho de banda de \(1\,\text{MHz}\), y aplicar
+          dicho modelo a nueve escenarios (tres configuraciones \(\times\) tres % chktex 21
+          niveles de ganancia: \(\times 10\), \(\times 47\) y \(\times 100\)).
+
+    \item Ejecutar \(1{,}000\) iteraciones Monte Carlo por escenario y por
+          nivel de tolerancia (\(\pm 1\,\text{\%}\), \(\pm 5\,\text{\%}\) y
+          \(\pm 10\,\text{\%}\)), muestreando las resistencias externas de forma
+          aleatoria dentro de su intervalo de tolerancia, a fin de obtener la
+          distribución empírica de la ganancia real del circuito.
+
+    \item Calcular los estadísticos descriptivos —media, desviación estándar y
+          porcentaje de muestras fuera de especificación— de cada distribución
+          de ganancia, y representarlos mediante histogramas normalizados que
+          faciliten la comparación entre escenarios.
+
+    \item Generar curvas de convergencia de la media de la ganancia en función
+          del número de iteraciones, para verificar que \(1{,}000\) muestras
+          son suficientes para la estabilización del estimador.
+
+    \item Producir diagramas de Bode (magnitud y fase) que muestren la
+          respuesta en frecuencia nominal junto con la banda de variación
+          inducida por las tolerancias, evidenciando la degradación del ancho
+          de banda en configuraciones de alta ganancia.
+
+    \item Comparar los tres niveles de tolerancia comercial para establecer
+          umbrales cuantitativos que orienten la elección de resistencias en
+          aplicaciones con requisitos estrictos de precisión en la ganancia.
+\end{itemize}
+
+\subsection{Alcances y Limitaciones}
+
+\subsubsection*{Alcances}
+
+El modelo de simulación desarrollado abarca los siguientes aspectos:
+
+\begin{itemize}[leftmargin=2em]
+    \item Se representan tres configuraciones clásicas del op-amp: amplificador
+          inversor, amplificador no inversor y seguidor de voltaje, cada una con
+          tres niveles de ganancia nominal (\(\times 10\), \(\times 47\) y
+          \(\times 100\)).
+    \item Se modela el comportamiento en frecuencia del op-amp genérico
+          LM741/\(\mu\)A741 mediante su función de transferencia de primer orden, % chktex 21
+          considerando un producto ganancia\nobreakdash-ancho de banda de
+          \(1\,\text{MHz}\) y una alimentación de \(\pm 15\,\text{V}\).
+    \item Se cuantifica el efecto estadístico de las tolerancias de las
+          resistencias externas sobre la ganancia real del circuito, empleando el
+          método de Monte Carlo con \(1{,}000\) muestras por escenario.
+    \item El simulador genera distribuciones de ganancia (histogramas con media
+          y desviación estándar), curvas de convergencia de la media y diagramas
+          de Bode (magnitud y fase) para cada configuración.
+    \item Todo el entorno de simulación está implementado en Python, lo que
+          garantiza reproducibilidad y facilita la incorporación de nuevos
+          escenarios sin herramientas de software propietario.
+\end{itemize}
+
+\subsubsection*{Limitaciones}
+
+El estudio presenta las siguientes restricciones que acotan su alcance:
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Sin validación experimental:} los resultados son exclusivamente
+          computacionales; no se construyeron prototipos físicos para contrastar
+          las distribuciones simuladas con mediciones reales.
+    \item \textbf{Modelo ideal del op-amp:} se ignoran efectos de segundo orden
+          como voltaje de offset, corrientes de polarización, ruido intrínseco y
+          deriva térmica, los cuales pueden ser relevantes en aplicaciones de
+          alta precisión.
+    \item \textbf{Única fuente de variabilidad:} solo se consideran las
+          tolerancias de las resistencias externas. Variaciones en la fuente de
+          alimentación, temperatura ambiente y envejecimiento de los componentes
+          quedan fuera del modelo.
+    \item \textbf{Familia de dispositivos limitada:} el análisis cubre
+          exclusivamente el op-amp LM741\slash\(\mu\)A741; dispositivos de alta % chktex 21
+          velocidad, bajo ruido o precisión —con características de transferencia
+          distintas— requieren modelos adicionales.
+    \item \textbf{Número de muestras fijo:} se utilizan \(1{,}000\) iteraciones
+          Monte Carlo, suficientes para estimar la tendencia central y la
+          dispersión, pero insuficientes para caracterizar eventos de baja
+          probabilidad en los extremos de la distribución.
+\end{itemize}
+
 % ══════════════════════════════════════════════════════════════════════════════
-\section{Variables Involucradas}
+\section{Marco Teórico}
+
+\subsection{Amplificador Operacional}
+
+Un amplificador operacional es un dispositivo activo de alta ganancia diferencial
+que amplifica la diferencia de voltaje entre sus terminales de entrada. En
+configuración de lazo cerrado, resistencias externas fijan la ganancia según la
+topología elegida. Las tres configuraciones estudiadas en este proyecto son:
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Inversor:} la señal se aplica a la entrada inversora a través
+          de \(R_1\); la retroalimentación se cierra mediante \(R_2\). La ganancia
+          es \(A_v = -R_2/R_1\); el signo negativo indica inversión de fase de
+          \(180^\circ\).
+    \item \textbf{No inversor:} la señal entra por la terminal no inversora y la
+          red \(R_1\)\,--\,\(R_2\) forma el divisor de retroalimentación. La
+          ganancia es \(A_v = 1 + R_2/R_1\), siempre mayor o igual a la unidad.
+    \item \textbf{Seguidor de voltaje:} caso particular del no inversor con
+          \(R_2 = 0\) y \(R_1 \to \infty\). La ganancia es \(A_v = 1\)
+          independientemente de cualquier componente externo; actúa como buffer
+          de alta impedancia de entrada y baja impedancia de salida.
+\end{itemize}
+
+\subsection{Función de Transferencia de Primer Orden}
+
+El op-amp LM741/\(\mu\)A741 % chktex 21
+se modela mediante una función de transferencia de primer orden que captura
+la caída de ganancia en lazo abierto a frecuencias elevadas:
+
+\begin{equation}
+    A(s) = \frac{A_0}{1 + s/\omega_0}, \qquad
+    \omega_0 = \frac{2\pi \cdot \mathrm{GBP}}{|A_v|}
+\end{equation}
+
+donde \(A_0\) es la ganancia en lazo abierto a baja frecuencia (suficientemente
+grande para comportamiento ideal en la banda de paso) y \(\mathrm{GBP} =
+1\,\text{MHz}\) es el producto ganancia-ancho de banda nominal. En el dominio
+de la frecuencia, la respuesta en magnitud del amplificador cerrado es:
+
+\begin{equation}
+    |H(f)| = \frac{|A_v|}{\sqrt{1 + (f/f_c)^2}}, \qquad
+    f_c = \frac{\mathrm{GBP}}{|A_v|}
+\end{equation}
+
+La frecuencia \(f_c\) es el punto a \(-3\,\text{dB}\): para ganancias altas,
+\(f_c\) se desplaza hacia frecuencias menores, reduciendo el ancho de banda útil.
+
+\subsection{Método de Monte Carlo}
+
+El método de Monte Carlo es una técnica de simulación estadística que estima
+propiedades de un sistema mediante la generación repetida de muestras aleatorias.
+Su aplicación a la propagación de incertidumbres sigue tres pasos:
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Muestreo:} para cada iteración \(i = 1, \ldots, N\) se generan
+          valores aleatorios de los parámetros inciertos
+          (\(\tilde{R}_1^{(i)},\, \tilde{R}_2^{(i)}\)) según sus distribuciones
+          de probabilidad.
+    \item \textbf{Evaluación:} se calcula la salida de interés
+          \(\tilde{A}_v^{(i)} = f(\tilde{R}_1^{(i)},\tilde{R}_2^{(i)})\) para
+          cada muestra.
+    \item \textbf{Análisis estadístico:} con el conjunto
+          \(\{\tilde{A}_v^{(i)}\}_{i=1}^{N}\) se estiman media, desviación
+          estándar y probabilidad de fallo.
+\end{enumerate}
+
+Por la Ley de los Grandes Números, los estimadores convergen a sus valores
+verdaderos conforme \(N \to \infty\). En este proyecto \(N = 1{,}000\) muestras
+resultan suficientes para la estabilización de la media y la desviación estándar,
+como verifican las curvas de convergencia generadas por el simulador.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Diseño Orientado a Objetos}
+
+\subsection{Jerarquía de Clases}
+
+El simulador aplica el principio de herencia para encapsular el comportamiento
+común de los amplificadores en una clase base abstracta y delegar la lógica
+específica a cada subclase concreta:
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{\texttt{AmplificadorBase} (clase abstracta):} define los
+          atributos comunes (\texttt{r1}, \texttt{r2}, \texttt{gbw}, \texttt{vcc})
+          con validación en sus \textit{setters}, e implementa los métodos
+          concretos \texttt{ganancia\_db()}, \texttt{calcular\_fc()} y
+          \texttt{respuesta\_frecuencia()}. Declara como abstractos
+          \texttt{calcular\_ganancia()} y \texttt{calcular\_salida()},
+          obligando a cada subclase a proveer su propia fórmula.
+
+    \item \textbf{\texttt{AmpInversor}:} implementa \(A_v = -R_2/R_1\). La salida
+          se recorta a \(\pm V_{cc}\) para modelar la saturación del op-amp.
+
+    \item \textbf{\texttt{AmpNoInversor}:} implementa \(A_v = 1 + R_2/R_1\)
+          con el mismo recorte por saturación.
+
+    \item \textbf{\texttt{SeguidorVoltaje}:} hereda de \texttt{AmplificadorBase}
+          con \(R_1 \to \infty\) y \(R_2 = 0\); bloquea los \textit{setters}
+          de ambas resistencias tras la construcción para garantizar
+          \(A_v = 1\) invariante.
+
+    \item \textbf{\texttt{Comparador}:} opera en lazo abierto (\(A_v \to \infty\));
+          la salida es digital (\(V_{cc}\) o \(0\,\text{V}\)) según
+          \(V_{\text{in}}\) respecto a \(V_{\text{ref}}\). Redefine
+          \texttt{calcular\_fc()} y \texttt{respuesta\_frecuencia()} para
+          lanzar \texttt{NotImplementedError}, evitando usos incorrectos.
+\end{itemize}
+
+\subsection{Módulos del Sistema}
+
+Además de la jerarquía de amplificadores, el proyecto se organiza en los
+siguientes módulos:
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{\texttt{SimuladorCircuito}:} orquesta el análisis de múltiples
+          configuraciones. Recibe instancias de \texttt{AmplificadorBase},
+          ejecuta los cálculos de ganancia, frecuencia de corte y ancho de
+          banda, y almacena los resultados en un diccionario indexado por
+          nombre del amplificador.
+
+    \item \textbf{\texttt{AnalizadorMonteCarlo}:} genera las muestras aleatorias
+          de \(R_1\) y \(R_2\), calcula la ganancia vectorizada para los
+          \(N\) pares usando \texttt{NumPy}, y deriva los estadísticos de
+          desempeño. Produce también la curva de convergencia.
+
+    \item \textbf{\texttt{VisualizadorResultados}:} genera todos los archivos
+          gráficos (Bode, histogramas MC, convergencia, comparación de ancho
+          de banda y mapa de calor) mediante \texttt{Matplotlib} y los guarda
+          en \texttt{outputs/graficas/}.
+
+    \item \textbf{\texttt{GeneradorReporte}:} escribe el archivo de texto plano
+          en \texttt{outputs/reportes/} con el resumen tabular de resultados.
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Metodología de Simulación}
+
+\subsection{Variables Involucradas}
 
 Las variables del modelo se clasifican en cuatro categorías según su papel dentro
 de la simulación Monte Carlo:
@@ -234,22 +493,84 @@ de la simulación Monte Carlo:
 
 \end{itemize}
 
-% ══════════════════════════════════════════════════════════════════════════════
-\section{Entradas y Salidas del Sistema}
+\subsection{Entradas y Salidas del Sistema}
 
-\subsection{Entradas}
-Describe los datos o parámetros que el modelo recibe como información de
-entrada (datos históricos, distribuciones de probabilidad, parámetros de
-configuración, etc.).
+\subsubsection*{Entradas}
 
-\subsection{Salidas}
-Describe los resultados que produce el modelo (métricas de desempeño,
-estadísticas, gráficas, reportes, etc.).
+El simulador recibe dos grupos de parámetros: los que describen el op-amp y los
+que definen cada escenario de análisis.
 
-% ══════════════════════════════════════════════════════════════════════════════
-\section{Restricciones y Supuestos}
+\begin{itemize}[leftmargin=2em]
 
-\subsection{Restricciones}
+    \item \textbf{Parámetros fijos del op-amp:}
+          \begin{itemize}[leftmargin=2em]
+              \item \(\mathrm{GBP} = 1\,\text{MHz}\): producto ganancia-ancho de
+                    banda del LM741/\(\mu\)A741. % chktex 21
+              \item \(V_{cc} = \pm15\,\text{V}\): voltaje de alimentación que
+                    define los límites de saturación de la salida.
+          \end{itemize}
+
+    \item \textbf{Parámetros de configuración del circuito:}
+          \begin{itemize}[leftmargin=2em]
+              \item \(R_1\) y \(R_2\) nominales en \(\Omega\): determinan la
+                    ganancia de cada escenario (\(\times 10\), \(\times 47\),
+                    \(\times 100\)).
+              \item Tipo de amplificador: inversor, no inversor o seguidor de
+                    voltaje.
+          \end{itemize}
+
+    \item \textbf{Parámetros de la simulación Monte Carlo:}
+          \begin{itemize}[leftmargin=2em]
+              \item \(t \in \{1\,\%,\, 5\,\%,\, 10\,\%\}\): niveles de tolerancia
+                    comercial de las resistencias.
+              \item \(N = 1{,}000\): número de iteraciones por corrida.
+              \item Rango de frecuencias para el diagrama de Bode:
+                    \(1\,\text{Hz}\) a \(10\,\text{MHz}\).
+          \end{itemize}
+
+\end{itemize}
+
+\subsubsection*{Salidas}
+
+El modelo produce salidas de dos tipos: archivos gráficos y un reporte de texto.
+
+\begin{itemize}[leftmargin=2em]
+
+    \item \textbf{Diagramas de Bode} (\texttt{bode\_<nombre>.png}):
+          magnitud en dB y fase en grados en función de la frecuencia para cada
+          configuración, con línea vertical en la frecuencia de corte \(f_c\).
+
+    \item \textbf{Histogramas Monte Carlo} (\texttt{mc\_<nombre>.png}):
+          distribución empírica de la ganancia real obtenida en las \(N\)
+          iteraciones para los tres niveles de tolerancia, con indicadores de
+          media, límites \(\pm 3\sigma\) y probabilidad de fallo.
+
+    \item \textbf{Curva de convergencia} (\texttt{convergencia\_<nombre>.png}):
+          evolución de la media y la desviación estándar de la ganancia al
+          aumentar el número de muestras, para verificar la estabilización del
+          estimador.
+
+    \item \textbf{Comparación de ancho de banda}
+          (\texttt{comparacion\_bw.png}): gráfica de barras horizontales en
+          escala logarítmica que contrasta el ancho de banda de las tres
+          configuraciones dentro de un mismo escenario.
+
+    \item \textbf{Mapa de calor} (\texttt{heatmap\_<clase>.png}):
+          ganancia en dB para todas las combinaciones de \(R_1\) y \(R_2\)
+          en el rango de diseño, generado una sola vez como análisis
+          determinista complementario.
+
+    \item \textbf{Reporte de texto} (\texttt{reporte\_<escenario>.txt}):
+          tabla con ganancia, frecuencia de corte y ancho de banda de cada
+          configuración, seguida de las estadísticas Monte Carlo
+          (\(\mu_{A_v}\), \(\sigma_{A_v}\), \(P(\text{fallo})\)) por nivel de
+          tolerancia.
+
+\end{itemize}
+
+\subsection{Restricciones y Supuestos}
+
+\subsubsection*{Restricciones}
 
 Las siguientes condiciones de frontera y limitaciones operativas se imponen al
 modelo y deben respetarse en toda corrida de simulación:
@@ -271,9 +592,9 @@ modelo y deben respetarse en toda corrida de simulación:
 
     \item \textbf{Tolerancias en valores comerciales estándar:}
           el análisis considera únicamente los niveles de tolerancia disponibles
-          en resistencias comerciales de carbón y película metálica: \(\pm 1\,\text{\%}\),
-          \(\pm 5\,\text{\%}\) y \(\pm 10\,\text{\%}\). Valores fuera de este conjunto no son
-          parte del espacio de estudio.
+          en resistencias comerciales de carbón y película metálica:
+          \(\pm 1\,\text{\%}\), \(\pm 5\,\text{\%}\) y \(\pm 10\,\text{\%}\).
+          Valores fuera de este conjunto no son parte del espacio de estudio.
 
     \item \textbf{Número de muestras Monte Carlo:}
           cada escenario ejecuta exactamente \(1{,}000\) iteraciones. Este valor
@@ -287,19 +608,19 @@ modelo y deben respetarse en toda corrida de simulación:
           orden mayor que incluyan polos secundarios.
 \end{itemize}
 
-\subsection{Supuestos}
+\subsubsection*{Supuestos}
 
 Para hacer viable el análisis y mantener la complejidad del modelo dentro de
 límites manejables, se adoptan los siguientes supuestos:
 
 \begin{itemize}[leftmargin=2em]
-    \item \textbf{Distribución uniforme de las tolerancias:}
-          se asume que el valor real de cada resistencia sigue una distribución
-          uniforme dentro del intervalo
-          \([R_{\text{nom}}(1-t),\; R_{\text{nom}}(1+t)]\), donde \(t\) es la
-          tolerancia fraccional. Esta elección es conservadora: cubre el caso
-          peor de manera estadísticamente correcta sin sobredimensionar el
-          impacto de los valores extremos.
+    \item \textbf{Distribución normal de las tolerancias:}
+          el valor real de cada resistencia sigue una distribución normal
+          \(\mathcal{N}(R_{\text{nom}},\,(R_{\text{nom}}\cdot t)^2)\),
+          centrada en el valor nominal con desviación estándar igual a
+          \(R_{\text{nom}} \cdot t\). Esta elección modela de forma realista
+          la variabilidad de manufactura, donde la mayoría de las unidades se
+          concentran cerca del valor central.
 
     \item \textbf{Independencia estadística entre componentes:}
           las variaciones de cada resistencia se tratan como variables aleatorias
@@ -333,109 +654,168 @@ límites manejables, se adoptan los siguientes supuestos:
 \end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
-\section{Objetivo de la Simulación}
+\section{Tipo de Muestreo}
 
-\textbf{Objetivo general.}
-Cuantificar el impacto estadístico de las tolerancias de fabricación de las
-resistencias externas sobre la ganancia de tres configuraciones clásicas de
-amplificadores operacionales —inversor, no inversor y seguidor de voltaje—
-mediante el método de Monte Carlo implementado en Python, con el fin de
-proporcionar información probabilística que respalde la selección
-de componentes antes de cualquier implementación física.
+La variabilidad de fabricación de las resistencias se modela mediante muestreo
+aleatorio con distribución \textbf{normal (gaussiana)}. Para cada iteración
+Monte Carlo se generan dos valores independientes:
 
-\textbf{Objetivos específicos:}
+\begin{equation}
+    \tilde{R}_k \sim \mathcal{N}(R_k,\; \sigma_k^2), \qquad
+    \sigma_k = R_k \cdot t, \quad k \in \{1, 2\}
+\end{equation}
+
+donde \(R_k\) es el valor nominal y \(t\) la tolerancia fraccional.
+
+\textbf{Justificación de la distribución normal.}
+La distribución normal resulta adecuada para modelar tolerancias de fabricación
+por las siguientes razones:
 
 \begin{itemize}[leftmargin=2em]
-    \item Modelar la respuesta en frecuencia del op-amp LM741/\(\mu\)A741 % chktex 21
-          mediante una función de transferencia de primer orden que incorpore
-          el producto ganancia-ancho de banda de \(1\,\text{MHz}\), y aplicar
-          dicho modelo a nueve escenarios (tres configuraciones \(\times\) tres % chktex 21
-          niveles de ganancia: \(\times 10\), \(\times 47\) y \(\times 100\)).
+    \item \textbf{Teorema Central del Límite:} la resistencia eléctrica de una
+          pieza es resultado de muchos factores de manufactura independientes
+          (composición del material, temperatura de cocción, geometría), cuya
+          superposición tiende a una distribución gaussiana.
+    \item \textbf{Conservadurismo en las colas:} a diferencia de la distribución
+          uniforme, la normal asigna probabilidad no nula a valores alejados de la
+          media, lo que captura eventos de baja probabilidad y produce estimaciones
+          de riesgo más realistas.
+    \item \textbf{Compatibilidad con normas metrológicas:} la Guía para la
+          Expresión de la Incertidumbre en la Medición (GUM) recomienda la
+          distribución normal para incertidumbres de tipo B derivadas de
+          especificaciones del fabricante.
+\end{itemize}
 
-    \item Ejecutar \(1{,}000\) iteraciones Monte Carlo por escenario y por
-          nivel de tolerancia (\(\pm 1\,\text{\%}\), \(\pm 5\,\text{\%}\) y \(\pm 10\,\text{\%}\)),
-          muestreando las resistencias externas de forma aleatoria dentro de su
-          intervalo de tolerancia, a fin de obtener la distribución empírica de
-          la ganancia real del circuito.
+\textbf{Parámetros empleados.} La Tabla~\ref{tab:muestreo} resume los valores
+de media y desviación estándar para cada combinación de escenario y tolerancia.
 
-    \item Calcular los estadísticos descriptivos —media, desviación estándar y
-          porcentaje de muestras fuera de especificación— de cada distribución
-          de ganancia, y representarlos mediante histogramas normalizados que
-          faciliten la comparación entre escenarios.
+\begin{table}[h]
+    \centering
+    \caption{Parámetros de la distribución de muestreo para el escenario de
+             ganancia baja (\(R_1 = 1\,\text{k}\Omega\),
+             \(R_2 = 10\,\text{k}\Omega\)).}
+    \label{tab:muestreo}
+    \begin{tabular}{lcccc}
+        \toprule
+        Tolerancia & \(\mu_{R_1}\) (\(\Omega\)) & \(\sigma_{R_1}\) (\(\Omega\))
+                   & \(\mu_{R_2}\) (\(\Omega\)) & \(\sigma_{R_2}\) (\(\Omega\)) \\
+        \midrule
+        \(\pm 1\,\%\)  & 1000 & 10  & 10\,000 & 100  \\
+        \(\pm 5\,\%\)  & 1000 & 50  & 10\,000 & 500  \\
+        \(\pm 10\,\%\) & 1000 & 100 & 10\,000 & 1000 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
-    \item Generar curvas de convergencia de la media de la ganancia en función
-          del número de iteraciones, para verificar que \(1{,}000\) muestras
-          son suficientes para la estabilización del estimador.
+En Python, el muestreo se realiza de forma vectorizada con
+\texttt{numpy.random.normal(R\_nom,\; R\_nom * t,\; N)}, que genera los \(N\)
+valores en un solo llamado sin necesidad de bucles explícitos.
 
-    \item Producir diagramas de Bode (magnitud y fase) que muestren la
-          respuesta en frecuencia nominal junto con la banda de variación
-          inducida por las tolerancias, evidenciando la degradación del ancho
-          de banda en configuraciones de alta ganancia.
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Implementación en Python}
 
-    \item Comparar los tres niveles de tolerancia comercial para establecer
-          umbrales cuantitativos que orienten la elección de resistencias en
-          aplicaciones con requisitos estrictos de precisión en la ganancia.
+\subsection{Estructura del Proyecto}
+
+El simulador se organiza en los siguientes módulos, cada uno con
+responsabilidad única:
+
+\begin{itemize}[leftmargin=2em]
+    \item \texttt{main.py}: punto de entrada. Define los tres escenarios
+          (Ganancia\_Baja, Ganancia\_Media, Ganancia\_Alta), instancia los
+          amplificadores, y coordina las llamadas a simulación, visualización
+          y reporte.
+    \item \texttt{src/amplificadores/}: jerarquía de clases de los cuatro
+          tipos de amplificador (\texttt{base.py}, \texttt{inversor.py},
+          \texttt{no\_inversor.py}, \texttt{seguidor.py},
+          \texttt{comparador.py}).
+    \item \texttt{src/simulacion/}: lógica de simulación
+          (\texttt{simulador.py} para el análisis determinista;
+          \texttt{monte\_carlo.py} para el análisis estadístico).
+    \item \texttt{src/visualizacion/visualizador.py}: generación de todas
+          las gráficas mediante \texttt{Matplotlib}.
+    \item \texttt{src/reporte/generador.py}: escritura del reporte de texto
+          plano con \texttt{datetime} y formato de cadenas de Python.
+\end{itemize}
+
+\subsection{Decisiones de Implementación}
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Vectorización con NumPy:} el análisis Monte Carlo calcula
+          las \(1{,}000\) ganancias en una sola operación matricial
+          (\(-R_2/R_1\) sobre arrays), evitando bucles Python y reduciendo
+          el tiempo de ejecución en uno o dos órdenes de magnitud.
+    \item \textbf{Validación en \textit{setters}:} la clase base rechaza
+          valores negativos o cero en \(R_1\), \(R_2\), GBP y \(V_{cc}\)
+          desde el momento de la asignación, previniendo errores silenciosos
+          en tiempo de ejecución.
+    \item \textbf{Contrato de interfaz con clases abstractas:} el uso de
+          \texttt{abc.ABC} con \texttt{@abstractmethod} garantiza que toda
+          subclase implemente los métodos requeridos, haciendo imposible
+          instanciar una configuración incompleta.
+    \item \textbf{Separación de responsabilidades:} cada módulo puede
+          probarse de forma independiente; añadir una nueva configuración
+          requiere únicamente crear una subclase de
+          \texttt{AmplificadorBase} sin tocar el resto del sistema.
 \end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
-\section{Alcances y Limitaciones}
+\section{Resultados y Gráficas}
 
-\subsection{Alcances}
-
-El modelo de simulación desarrollado abarca los siguientes aspectos:
-
-\begin{itemize}[leftmargin=2em]
-    \item Se representan tres configuraciones clásicas del op-amp: amplificador
-          inversor, amplificador no inversor y seguidor de voltaje, cada una con
-          tres niveles de ganancia nominal (\(\times 10\), \(\times 47\) y
-          \(\times 100\)).
-    \item Se modela el comportamiento en frecuencia del op-amp genérico
-          LM741/\(\mu\)A741 mediante su función de transferencia de primer orden, % chktex 21
-          considerando un producto ganancia\nobreakdash-ancho de banda de \(1\,\text{MHz}\)
-          y una alimentación de \(\pm 15\,\text{V}\).
-    \item Se cuantifica el efecto estadístico de las tolerancias de las
-          resistencias externas sobre la ganancia real del circuito, empleando el
-          método de Monte Carlo con \(1{,}000\) muestras por escenario.
-    \item El simulador genera distribuciones de ganancia (histogramas con media
-          y desviación estándar), curvas de convergencia de la media y diagramas
-          de Bode (magnitud y fase) para cada configuración.
-    \item Todo el entorno de simulación está implementado en Python, lo que
-          garantiza reproducibilidad y facilita la incorporación de nuevos
-          escenarios sin herramientas de software propietario.
-\end{itemize}
-
-\subsection{Limitaciones}
-
-El estudio presenta las siguientes restricciones que acotan su alcance:
-
-\begin{itemize}[leftmargin=2em]
-    \item \textbf{Sin validación experimental:} los resultados son exclusivamente
-          computacionales; no se construyeron prototipos físicos para contrastar
-          las distribuciones simuladas con mediciones reales.
-    \item \textbf{Modelo ideal del op-amp:} se ignoran efectos de segundo orden
-          como voltaje de offset, corrientes de polarización, ruido intrínseco y
-          deriva térmica, los cuales pueden ser relevantes en aplicaciones de
-          alta precisión.
-    \item \textbf{Única fuente de variabilidad:} solo se consideran las
-          tolerancias de las resistencias externas. Variaciones en la fuente de
-          alimentación, temperatura ambiente y envejecimiento de los componentes
-          quedan fuera del modelo.
-    \item \textbf{Familia de dispositivos limitada:} el análisis cubre
-          exclusivamente el op-amp LM741\slash\(\mu\)A741; dispositivos de alta % chktex 21
-          velocidad, bajo ruido o precisión —con características de transferencia
-          distintas— requieren modelos adicionales.
-    \item \textbf{Número de muestras fijo:} se utilizan \(1{,}000\) iteraciones
-          Monte Carlo, suficientes para estimar la tendencia central y la
-          dispersión, pero insuficientes para caracterizar eventos de baja
-          probabilidad en los extremos de la distribución.
-\end{itemize}
+% Completar con las gráficas generadas por el simulador y su análisis.
 
 % ══════════════════════════════════════════════════════════════════════════════
-% Referencias (opcional)
-% \newpage
-% \section*{Referencias}
-% \begin{thebibliography}{9}
-%   \bibitem{referencia1} Autor, A. (Año). \textit{Título}. Editorial.
-% \end{thebibliography}
+\section{Discusión}
+
+% Interpretar los resultados: comparar tolerancias, identificar configuraciones
+% más sensibles, comentar la convergencia de Monte Carlo.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Conclusiones}
+
+% Síntesis de los hallazgos principales y recomendaciones para la selección
+% de componentes.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+
+\begin{thebibliography}{9}
+
+    \bibitem{sedra}
+    Sedra, A.\,S. y Smith, K.\,C. (2015).
+    \textit{Microelectronic Circuits} (7.\textsuperscript{a} ed.).
+    Oxford University Press.
+
+    \bibitem{razavi}
+    Razavi, B. (2017).
+    \textit{Design of Analog CMOS Integrated Circuits}
+    (2.\textsuperscript{a} ed.).
+    McGraw-Hill Education.
+
+    \bibitem{monte_carlo}
+    Robert, C.\,P. y Casella, G. (2004).
+    \textit{Monte Carlo Statistical Methods}
+    (2.\textsuperscript{a} ed.).
+    Springer.
+
+    \bibitem{numpy}
+    Harris, C.\,R. \textit{et al.} (2020).
+    Array programming with \textsc{NumPy}.
+    \textit{Nature}, 585, 357--362.
+
+    \bibitem{matplotlib}
+    Hunter, J.\,D. (2007).
+    Matplotlib: A 2D graphics environment.
+    \textit{Computing in Science \& Engineering}, 9(3), 90--95.
+
+\end{thebibliography}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\appendix
+\section{Código Fuente}
+
+% El código fuente completo del simulador se incluye a continuación.
+% Puede listarse con el paquete listings o minted, o adjuntarse como
+% archivo independiente en el repositorio del proyecto.
 
 \end{document}

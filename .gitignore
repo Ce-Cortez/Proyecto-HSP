@@ -18,6 +18,7 @@ venv/
 *.log
 *.out
 *.synctex.gz
+*.pdf
 compile_out.txt
 
 # VSCode (configuración específica de máquina)
