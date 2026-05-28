@@ -1,7 +1,6 @@
 ﻿\documentclass[12pt, letterpaper]{article}
 
 % ── Paquetes ──────────────────────────────────────────────────────────────────
-\usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[spanish]{babel}
 \usepackage{amsmath}
@@ -10,7 +9,9 @@
 \usepackage{setspace}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
-\usepackage{parskip}
+% parskip reemplazado para evitar conflicto de compatibilidad con titlesec v2.17
+\setlength{\parskip}{0.5\baselineskip}
+\setlength{\parindent}{0pt}
 \usepackage{booktabs}
 \usepackage{enumitem}
 \usepackage{xcolor}
@@ -38,11 +39,11 @@
 \renewcommand{\headrule}{\hbox to \headwidth{\color{uacjblue}\leaders\hrule height \headrulewidth\hfill}} % chktex 1
 
 % ── Formato de secciones ──────────────────────────────────────────────────────
-\titleformat{\section}
+\titleformat{\section}[block]
     {\large\bfseries\color{uacjblue}}
     {\thesection.}{0.5em}{}[\titlerule]
 
-\titleformat{\subsection}
+\titleformat{\subsection}[block]
     {\normalsize\bfseries\color{uacjblue!80!black}}
     {\thesubsection.}{0.5em}{}
 
@@ -109,14 +110,14 @@ uno con un comportamiento distinto en ganancia y ancho de banda.
 
 En la práctica, los componentes pasivos utilizados en estos circuitos —principalmente
 resistencias— no son perfectos: presentan tolerancias de fabricación que provocan
-que su valor real difiera del nominal. Una resistencia de \(1\,\text{k}\Omega\) con
-tolerancia del \(\pm5\,\text{\%}\) puede tomar cualquier valor entre \(950\,\Omega\) y
-\(1{,}050\,\Omega\). Esta variabilidad se propaga directamente a la ganancia del
+que su valor real difiera del nominal. Una resistencia de \(1\,\text{k}\Omega\) con % chktex 21
+tolerancia del \(\pm5\,\text{\%}\) puede tomar cualquier valor entre \(950\,\Omega\) y % chktex 21
+\(1{,}050\,\Omega\). Esta variabilidad se propaga directamente a la ganancia del % chktex 21
 circuito, lo que puede comprometer el cumplimiento de especificaciones en aplicaciones
 de precisión.
 
 El presente proyecto estudia este problema mediante simulación computacional en
-Python. Se modela un op-amp genérico de la familia LM741/\(\mu\)A741 con producto
+Python. Se modela un op-amp genérico de la familia LM741/\(\mu\)A741 con producto % chktex 21
 ganancia-ancho de banda de \(1\,\text{MHz}\) y alimentación de \(\pm15\,\text{V}\),
 operando en tres escenarios de ganancia: baja (\(\times 10\)), media (\(\times 47\))
 y alta (\(\times 100\)). Para cada configuración y escenario se cuantifica el
@@ -162,14 +163,75 @@ integrar Python como entorno de simulación reproducible y documentado.
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Variables Involucradas}
 
-Enumera y describe las variables que intervienen en el sistema simulado.
-Clasifícalas según su naturaleza:
+Las variables del modelo se clasifican en cuatro categorías según su papel dentro
+de la simulación Monte Carlo:
 
 \begin{itemize}[leftmargin=2em]
-    \item \textbf{Variables de estado:} \ldots
-    \item \textbf{Variables de decisión:} \ldots
-    \item \textbf{Variables aleatorias:} \ldots
-    \item \textbf{Variables de desempeño:} \ldots
+
+    \item \textbf{Variables de decisión:}
+          son los parámetros que el diseñador controla y que permanecen fijos
+          durante cada corrida.
+
+          \begin{itemize}[leftmargin=2em]
+              \item \(R_1\): resistencia de entrada, valor nominal en \(\Omega\)
+                    (\(1\,\text{k}\Omega\) en todos los escenarios).
+              \item \(R_2\): resistencia de retroalimentación, valor nominal en
+                    \(\Omega\) (\(10\,\text{k}\Omega\), \(47\,\text{k}\Omega\) o
+                    \(100\,\text{k}\Omega\) según el nivel de ganancia).
+              \item Configuración del amplificador: inversor, no inversor o
+                    seguidor de voltaje.
+              \item \(t\): nivel de tolerancia comercial de las resistencias
+                    (\(1\,\%\), \(5\,\%\) o \(10\,\%\)).
+              \item \(N = 1{,}000\): número de iteraciones Monte Carlo.
+          \end{itemize}
+
+    \item \textbf{Variables aleatorias:}
+          representan la variabilidad de fabricación de los componentes. En cada
+          iteración se muestrean de forma independiente siguiendo una distribución
+          normal centrada en el valor nominal con desviación estándar proporcional
+          a la tolerancia:
+
+          \begin{itemize}[leftmargin=2em]
+              \item \(\tilde{R}_1 \sim \mathcal{N}\!\left(R_1,\,(R_1\, t)^2\right)\):
+                    valor real de la resistencia de entrada en \(\Omega\).
+              \item \(\tilde{R}_2 \sim \mathcal{N}\!\left(R_2,\,(R_2\, t)^2\right)\):
+                    valor real de la resistencia de retroalimentación en \(\Omega\).
+          \end{itemize}
+
+    \item \textbf{Variables de estado:}
+          se calculan a partir de \(\tilde{R}_1\) y \(\tilde{R}_2\) en cada
+          iteración y describen el comportamiento instantáneo del circuito.
+
+          \begin{itemize}[leftmargin=2em]
+              \item \(\tilde{A}_v\): ganancia de voltaje real del circuito
+                    (adimensional). Su expresión depende de la configuración:
+                    \(-\tilde{R}_2/\tilde{R}_1\) para el inversor,
+                    \(1 + \tilde{R}_2/\tilde{R}_1\) para el no inversor y
+                    \(1\) para el seguidor.
+              \item \(\tilde{f}_c = \mathrm{GBP}\,/\,|\tilde{A}_v|\): frecuencia
+                    de corte a \(-3\,\text{dB}\) en Hz, función directa de la
+                    ganancia obtenida en cada muestra.
+          \end{itemize}
+
+    \item \textbf{Variables de desempeño:}
+          resumen estadísticamente el conjunto de \(N\) muestras y constituyen
+          los indicadores de calidad del diseño.
+
+          \begin{itemize}[leftmargin=2em]
+              \item \(\mu_{A_v} = \tfrac{1}{N}\sum_{i=1}^{N}\tilde{A}_{v,i}\):
+                    ganancia media; estima el valor central de la distribución real.
+              \item \(\sigma_{A_v} = \sqrt{\tfrac{1}{N}\sum_{i=1}^{N}
+                    \!\left(\tilde{A}_{v,i} - \mu_{A_v}\right)^{\!2}}\):
+                    desviación estándar de la ganancia; cuantifica la dispersión
+                    inducida por las tolerancias.
+              \item \(P(\text{fallo})\): fracción de muestras cuya ganancia cae
+                    fuera del intervalo
+                    \(\bigl[\mu_{A_v}^{(1\%)}\!\pm 3\,\sigma_{A_v}^{(1\%)}\bigr]\),
+                    usando la distribución al \(1\,\%\) como referencia de aceptación.
+              \item \(\mathrm{BW} = \mathrm{GBP}\,/\,|\mu_{A_v}|\): ancho de banda
+                    efectivo del amplificador en Hz.
+          \end{itemize}
+
 \end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
@@ -201,7 +263,7 @@ modelo y deben respetarse en toda corrida de simulación:
           recortada (\textit{clipping}), lo cual invalida el análisis lineal.
 
     \item \textbf{Producto ganancia-ancho de banda (GBP) de \(1\,\text{MHz}\):}
-          el modelo de op-amp utilizado corresponde a la familia LM741/\(\mu\)A741,
+          el modelo de op-amp utilizado corresponde a la familia LM741/\(\mu\)A741, % chktex 21
           cuyo GBP nominal es \(1\,\text{MHz}\). Para ganancias elevadas
           (\(\times 47\) y \(\times 100\)) el ancho de banda disponible se reduce
           conforme a \(f_{-3\,\text{dB}} = \text{GBP}/|A_v|\), lo que restringe
@@ -284,10 +346,10 @@ de componentes antes de cualquier implementación física.
 \textbf{Objetivos específicos:}
 
 \begin{itemize}[leftmargin=2em]
-    \item Modelar la respuesta en frecuencia del op-amp LM741/\(\mu\)A741
+    \item Modelar la respuesta en frecuencia del op-amp LM741/\(\mu\)A741 % chktex 21
           mediante una función de transferencia de primer orden que incorpore
           el producto ganancia-ancho de banda de \(1\,\text{MHz}\), y aplicar
-          dicho modelo a nueve escenarios (tres configuraciones \(\times\) tres
+          dicho modelo a nueve escenarios (tres configuraciones \(\times\) tres % chktex 21
           niveles de ganancia: \(\times 10\), \(\times 47\) y \(\times 100\)).
 
     \item Ejecutar \(1{,}000\) iteraciones Monte Carlo por escenario y por
@@ -328,8 +390,8 @@ El modelo de simulación desarrollado abarca los siguientes aspectos:
           tres niveles de ganancia nominal (\(\times 10\), \(\times 47\) y
           \(\times 100\)).
     \item Se modela el comportamiento en frecuencia del op-amp genérico
-          LM741/\(\mu\)A741 mediante su función de transferencia de primer orden,
-          considerando un producto ganancia-ancho de banda de \(1\,\text{MHz}\)
+          LM741/\(\mu\)A741 mediante su función de transferencia de primer orden, % chktex 21
+          considerando un producto ganancia\nobreakdash-ancho de banda de \(1\,\text{MHz}\)
           y una alimentación de \(\pm 15\,\text{V}\).
     \item Se cuantifica el efecto estadístico de las tolerancias de las
           resistencias externas sobre la ganancia real del circuito, empleando el
@@ -359,7 +421,7 @@ El estudio presenta las siguientes restricciones que acotan su alcance:
           alimentación, temperatura ambiente y envejecimiento de los componentes
           quedan fuera del modelo.
     \item \textbf{Familia de dispositivos limitada:} el análisis cubre
-          exclusivamente el op-amp LM741/\(\mu\)A741; dispositivos de alta
+          exclusivamente el op-amp LM741\slash\(\mu\)A741; dispositivos de alta % chktex 21
           velocidad, bajo ruido o precisión —con características de transferencia
           distintas— requieren modelos adicionales.
     \item \textbf{Número de muestras fijo:} se utilizan \(1{,}000\) iteraciones

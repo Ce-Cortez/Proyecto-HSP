@@ -2,7 +2,6 @@
 # Configura los escenarios, instancia los amplificadores, corre todos
 # los analisis y genera las graficas y reportes de salida.
 
-import sys
 import numpy as np
 
 from src.amplificadores.inversor import AmpInversor

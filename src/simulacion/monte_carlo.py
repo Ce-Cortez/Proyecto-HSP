@@ -60,7 +60,7 @@ class AnalizadorMonteCarlo:
                 f"AnalizadorMonteCarlo: formula no definida para {type(amp).__name__}."
             )
 
-    def ejecutar(self, amp: AmplificadorBase, tolerancias: list = None) -> dict:
+    def ejecutar(self, amp: AmplificadorBase, tolerancias: list | None = None) -> dict:
         """
         Corre el analisis de Monte Carlo para un amplificador dado.
         Genera N pares (R1, R2) con distribucion Normal para cada nivel

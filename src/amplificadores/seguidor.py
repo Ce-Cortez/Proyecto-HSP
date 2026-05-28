@@ -45,7 +45,9 @@ class SeguidorVoltaje(AmplificadorBase):
         if getattr(self, '_SeguidorVoltaje__bloqueado', False):
             raise ValueError("SeguidorVoltaje: R1 no es configurable (fijo en infinito).")
         # Si todavia no esta bloqueado (durante __init__), usamos el setter del padre
-        AmplificadorBase.r1.fset(self, valor)
+        fset_r1 = AmplificadorBase.r1.fset
+        assert fset_r1 is not None
+        fset_r1(self, valor)
 
     @property
     def r2(self) -> float:
@@ -55,7 +57,9 @@ class SeguidorVoltaje(AmplificadorBase):
     def r2(self, valor: float):
         if getattr(self, '_SeguidorVoltaje__bloqueado', False):
             raise ValueError("SeguidorVoltaje: R2 no es configurable (fijo en 0).")
-        AmplificadorBase.r2.fset(self, valor)
+        fset_r2 = AmplificadorBase.r2.fset
+        assert fset_r2 is not None
+        fset_r2(self, valor)
 
     def calcular_ganancia(self) -> float:
         """

@@ -5,7 +5,6 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 
 from src.amplificadores.base import AmplificadorBase
 
