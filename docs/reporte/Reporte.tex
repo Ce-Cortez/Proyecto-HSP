@@ -1,9 +1,10 @@
-\documentclass[12pt, letterpaper]{article}
+﻿\documentclass[12pt, letterpaper]{article}
 
 % ── Paquetes ──────────────────────────────────────────────────────────────────
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[spanish]{babel}
+\usepackage{amsmath}
 \usepackage{geometry}
 \usepackage{graphicx}
 \usepackage{setspace}
@@ -13,14 +14,15 @@
 \usepackage{booktabs}
 \usepackage{enumitem}
 \usepackage{xcolor}
-\usepackage{hyperref}
+\usepackage[pageanchor=false]{hyperref}
 
 % ── Márgenes ──────────────────────────────────────────────────────────────────
 \geometry{
-    top    = 2.5cm,
-    bottom = 2.5cm,
-    left   = 3cm,
-    right  = 2.5cm
+    top        = 2.5cm,
+    bottom     = 2.5cm,
+    left       = 3cm,
+    right      = 2.5cm,
+    headheight = 24.02pt
 }
 
 % ── Color institucional UACJ ──────────────────────────────────────────────────
@@ -30,10 +32,10 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\small\textcolor{uacjblue}{\textbf{Universidad Autónoma de Ciudad Juárez}}}
-\fancyhead[R]{\small\textcolor{uacjblue}{Instituto de Ciencia y Tecnología}}
+\fancyhead[R]{\small\textcolor{uacjblue}{Instituto de Ingeniería y Tecnología}}
 \fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
-\renewcommand{\headrule}{\hbox to\headwidth{\color{uacjblue}\leaders\hrule height \headrulewidth\hfill}}
+\renewcommand{\headrule}{\hbox to \headwidth{\color{uacjblue}\leaders\hrule height \headrulewidth\hfill}} % chktex 1
 
 % ── Formato de secciones ──────────────────────────────────────────────────────
 \titleformat{\section}
@@ -46,6 +48,9 @@
 
 % ── Interlineado ──────────────────────────────────────────────────────────────
 \setstretch{1.15}
+
+% Permite a LaTeX estirar espacios para evitar líneas desbordadas (Overfull \hbox)
+\setlength{\emergencystretch}{3em}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \begin{document}
@@ -73,13 +78,13 @@
     % Proyecto
     \textcolor{uacjblue}{\rule{0.6\textwidth}{0.8pt}}\\[0.3cm]
     {\LARGE\bfseries Proyecto Final}\\[0.15cm]
-    {\large\itshape Título del Proyecto}\\[0.3cm]  % <── Cambia el título del proyecto
+    {\large\textit{Título del Proyecto}}\\[0.3cm]  % <── Cambia el título del proyecto
     \textcolor{uacjblue}{\rule{0.6\textwidth}{0.8pt}}\\[0.6cm]
 
     % Información académica en tabla
     \begin{tabular}{r l}
         \textbf{Docente:}         & Dra. Leticia Ortega Máynez \\[0.25cm]   % <── Nombre del docente
-        \textbf{Alumno(s):}       & Cortez Pando, César Enrique \hfill 267629 \\
+        \textbf{Alumno(s):}       & Cortez Pando, César Enrique \hfill 267629 \\ % chktex 36
                                   & Moreno López, José Alejandro \hfill 266669 \\[0.25cm]
         \textbf{Fecha de entrega:}& Ciudad Juárez, Chih., \today \\
     \end{tabular}
@@ -105,7 +110,7 @@ uno con un comportamiento distinto en ganancia y ancho de banda.
 En la práctica, los componentes pasivos utilizados en estos circuitos —principalmente
 resistencias— no son perfectos: presentan tolerancias de fabricación que provocan
 que su valor real difiera del nominal. Una resistencia de \(1\,\text{k}\Omega\) con
-tolerancia del \(\pm5\,\%\) puede tomar cualquier valor entre \(950\,\Omega\) y
+tolerancia del \(\pm5\,\text{\%}\) puede tomar cualquier valor entre \(950\,\Omega\) y
 \(1{,}050\,\Omega\). Esta variabilidad se propaga directamente a la ganancia del
 circuito, lo que puede comprometer el cumplimiento de especificaciones en aplicaciones
 de precisión.
@@ -183,27 +188,131 @@ estadísticas, gráficas, reportes, etc.).
 \section{Restricciones y Supuestos}
 
 \subsection{Restricciones}
-Lista las limitaciones del modelo que se deben respetar durante la simulación
-(recursos disponibles, capacidades máximas, condiciones de frontera, etc.).
+
+Las siguientes condiciones de frontera y limitaciones operativas se imponen al
+modelo y deben respetarse en toda corrida de simulación:
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Voltaje de alimentación fijo (\(\pm 15\,\text{V}\)):}
+          la tensión de alimentación del op-amp se mantiene constante en
+          \(\pm 15\,\text{V}\) a lo largo de todas las simulaciones. La salida del
+          amplificador queda acotada por los rieles de alimentación; cualquier
+          ganancia que lleve la señal de salida más allá de ese intervalo sería
+          recortada (\textit{clipping}), lo cual invalida el análisis lineal.
+
+    \item \textbf{Producto ganancia-ancho de banda (GBP) de \(1\,\text{MHz}\):}
+          el modelo de op-amp utilizado corresponde a la familia LM741/\(\mu\)A741,
+          cuyo GBP nominal es \(1\,\text{MHz}\). Para ganancias elevadas
+          (\(\times 47\) y \(\times 100\)) el ancho de banda disponible se reduce
+          conforme a \(f_{-3\,\text{dB}} = \text{GBP}/|A_v|\), lo que restringe
+          el rango de frecuencias útil del circuito.
+
+    \item \textbf{Tolerancias en valores comerciales estándar:}
+          el análisis considera únicamente los niveles de tolerancia disponibles
+          en resistencias comerciales de carbón y película metálica: \(\pm 1\,\text{\%}\),
+          \(\pm 5\,\text{\%}\) y \(\pm 10\,\text{\%}\). Valores fuera de este conjunto no son
+          parte del espacio de estudio.
+
+    \item \textbf{Número de muestras Monte Carlo:}
+          cada escenario ejecuta exactamente \(1{,}000\) iteraciones. Este valor
+          es un parámetro fijo del modelo; incrementarlo requeriría ajustar
+          explícitamente la configuración de la simulación.
+
+    \item \textbf{Rango de frecuencias del diagrama de Bode:}
+          los diagramas de Bode se evalúan entre \(1\,\text{Hz}\) y
+          \(10\,\text{MHz}\), rango dentro del cual el modelo de primer orden del
+          LM741 es representativo. Frecuencias superiores requieren modelos de
+          orden mayor que incluyan polos secundarios.
+\end{itemize}
 
 \subsection{Supuestos}
-Presenta los supuestos que se asumen para simplificar el modelo y hacer viable
-la simulación (p.\,ej., distribuciones de probabilidad, comportamientos
-deterministas, horizontes de tiempo, etc.).
+
+Para hacer viable el análisis y mantener la complejidad del modelo dentro de
+límites manejables, se adoptan los siguientes supuestos:
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Distribución uniforme de las tolerancias:}
+          se asume que el valor real de cada resistencia sigue una distribución
+          uniforme dentro del intervalo
+          \([R_{\text{nom}}(1-t),\; R_{\text{nom}}(1+t)]\), donde \(t\) es la
+          tolerancia fraccional. Esta elección es conservadora: cubre el caso
+          peor de manera estadísticamente correcta sin sobredimensionar el
+          impacto de los valores extremos.
+
+    \item \textbf{Independencia estadística entre componentes:}
+          las variaciones de cada resistencia se tratan como variables aleatorias
+          independientes entre sí. No se modela ninguna correlación debida a
+          lotes de fabricación compartidos, temperatura o envejecimiento conjunto.
+
+    \item \textbf{Op-amp ideal salvo por el GBP:}
+          se ignoran efectos de segundo orden del dispositivo —voltaje de
+          \textit{offset}, corrientes de polarización y de \textit{offset},
+          ruido interno y deriva térmica— y se retiene únicamente la caída de
+          ganancia de primer orden asociada al GBP\@. Bajo esta hipótesis, la
+          función de transferencia del op-amp en lazo abierto es
+          \(A(s) = A_0 / (1 + s/\omega_0)\), con \(A_0\) suficientemente
+          grande para aproximarse al comportamiento ideal en la banda de paso.
+
+    \item \textbf{Operación lineal (sin saturación):}
+          se supone que la amplitud de la señal de entrada es suficientemente
+          pequeña para que la salida permanezca dentro de la región lineal en
+          todo momento. El análisis de saturación queda fuera del alcance del
+          modelo.
+
+    \item \textbf{Fuente de alimentación ideal:}
+          la tensión de alimentación \(\pm 15\,\text{V}\) se trata como una
+          fuente perfectamente regulada, sin rizado ni variaciones transitorias
+          que pudieran alterar los parámetros del op-amp.
+
+    \item \textbf{Temperatura ambiente constante:}
+          todos los parámetros del circuito se evalúan a \(25\,^{\circ}\text{C}\)
+          (condición estándar). La deriva térmica de resistencias y del op-amp
+          no se incorpora al modelo.
+\end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Objetivo de la Simulación}
 
-Redacta el objetivo general y, de ser necesario, los objetivos específicos que
-se persiguen con el estudio de simulación.
+\textbf{Objetivo general.}
+Cuantificar el impacto estadístico de las tolerancias de fabricación de las
+resistencias externas sobre la ganancia de tres configuraciones clásicas de
+amplificadores operacionales —inversor, no inversor y seguidor de voltaje—
+mediante el método de Monte Carlo implementado en Python, con el fin de
+proporcionar información probabilística que respalde la selección
+de componentes antes de cualquier implementación física.
+
+\textbf{Objetivos específicos:}
 
 \begin{itemize}[leftmargin=2em]
-    \item \textbf{Objetivo general:} \ldots
-    \item \textbf{Objetivos específicos:}
-    \begin{itemize}
-        \item \ldots
-        \item \ldots
-    \end{itemize}
+    \item Modelar la respuesta en frecuencia del op-amp LM741/\(\mu\)A741
+          mediante una función de transferencia de primer orden que incorpore
+          el producto ganancia-ancho de banda de \(1\,\text{MHz}\), y aplicar
+          dicho modelo a nueve escenarios (tres configuraciones \(\times\) tres
+          niveles de ganancia: \(\times 10\), \(\times 47\) y \(\times 100\)).
+
+    \item Ejecutar \(1{,}000\) iteraciones Monte Carlo por escenario y por
+          nivel de tolerancia (\(\pm 1\,\text{\%}\), \(\pm 5\,\text{\%}\) y \(\pm 10\,\text{\%}\)),
+          muestreando las resistencias externas de forma aleatoria dentro de su
+          intervalo de tolerancia, a fin de obtener la distribución empírica de
+          la ganancia real del circuito.
+
+    \item Calcular los estadísticos descriptivos —media, desviación estándar y
+          porcentaje de muestras fuera de especificación— de cada distribución
+          de ganancia, y representarlos mediante histogramas normalizados que
+          faciliten la comparación entre escenarios.
+
+    \item Generar curvas de convergencia de la media de la ganancia en función
+          del número de iteraciones, para verificar que \(1{,}000\) muestras
+          son suficientes para la estabilización del estimador.
+
+    \item Producir diagramas de Bode (magnitud y fase) que muestren la
+          respuesta en frecuencia nominal junto con la banda de variación
+          inducida por las tolerancias, evidenciando la degradación del ancho
+          de banda en configuraciones de alta ganancia.
+
+    \item Comparar los tres niveles de tolerancia comercial para establecer
+          umbrales cuantitativos que orienten la elección de resistencias en
+          aplicaciones con requisitos estrictos de precisión en la ganancia.
 \end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
@@ -249,10 +358,10 @@ El estudio presenta las siguientes restricciones que acotan su alcance:
           tolerancias de las resistencias externas. Variaciones en la fuente de
           alimentación, temperatura ambiente y envejecimiento de los componentes
           quedan fuera del modelo.
-    \item \textbf{Familia de dispositivos limitada:} el análisis se circunscribe
-          al op-amp LM741/\(\mu\)A741. Op-amps de alta velocidad, bajo ruido o
-          de precisión —con características de transferencia distintas— requieren
-          modelos adicionales.
+    \item \textbf{Familia de dispositivos limitada:} el análisis cubre
+          exclusivamente el op-amp LM741/\(\mu\)A741; dispositivos de alta
+          velocidad, bajo ruido o precisión —con características de transferencia
+          distintas— requieren modelos adicionales.
     \item \textbf{Número de muestras fijo:} se utilizan \(1{,}000\) iteraciones
           Monte Carlo, suficientes para estimar la tendencia central y la
           dispersión, pero insuficientes para caracterizar eventos de baja
