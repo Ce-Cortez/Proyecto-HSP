@@ -143,8 +143,14 @@ class AnalizadorMonteCarlo {
 ' ------------------------------------------------------------
 
 ' Genera todas las graficas con Matplotlib y las guarda en outputs/graficas/
+' Los archivos se organizan en subcarpetas por tipo y llevan prefijo del chip activo
 class VisualizadorResultados {
   - _output_dir : str
+  ' Prefijo que se antepone al nombre de cada archivo (ej. "LM741_")
+  - _prefijo : str
+  --
+  ' chip_nombre: nombre del op-amp activo para prefijar los archivos de salida
+  + __init__(output_dir, chip_nombre)
   --
   + plot_bode(amp)
   + plot_histograma_mc(resultados_mc, amp_nombre)

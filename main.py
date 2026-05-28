@@ -25,8 +25,17 @@ ESCENARIOS = [
     {"nombre": "Ganancia_Alta",  "r1": 1000, "r2": 100_000},  # |Av| inversor = 100
 ]
 
-GBW = 1e6    # Hz — producto ganancia-ancho de banda del op-amp ideal (LM741 / uA741)
-VCC = 15.0   # V  — voltaje de alimentacion
+# Catalogo de op-amps reales con sus especificaciones tipicas de hoja de datos.
+# GBW: producto ganancia-ancho de banda (Hz)
+# VCC: voltaje de alimentacion simetrica tipica (V)
+OP_AMPS = {
+    "LM741":  {"gbw": 1.0e6,  "vcc": 15.0},   # clasico de laboratorio, lento
+    "TL081":  {"gbw": 3.0e6,  "vcc": 15.0},   # FET input, bajo ruido, 3x mas rapido
+    "LM318":  {"gbw": 15.0e6, "vcc": 15.0},   # alta velocidad, 15x vs LM741
+}
+
+# Cambia este valor para simular con un chip diferente
+CHIP_ACTIVO = "LM741"
 
 
 def separador(titulo: str):
@@ -37,9 +46,16 @@ def separador(titulo: str):
 
 
 def main():
+    # Leemos las specs del chip seleccionado una sola vez
+    chip = OP_AMPS[CHIP_ACTIVO]
+    gbw  = chip["gbw"]
+    vcc  = chip["vcc"]
+
     # Creamos las instancias de salida una sola vez — se reusan en todos los escenarios
-    viz = VisualizadorResultados(output_dir="outputs/graficas")
+    viz = VisualizadorResultados(output_dir="outputs/graficas", chip_nombre=CHIP_ACTIVO)
     rep = GeneradorReporte(output_dir="outputs/reportes")
+
+    print(f"Chip activo: {CHIP_ACTIVO}  (GBW={gbw/1e6:.1f} MHz, Vcc=±{vcc} V)")
 
     for escenario in ESCENARIOS:
         nombre_esc = escenario["nombre"]
@@ -53,10 +69,10 @@ def main():
         # El seguidor y comparador ignoran r1/r2 del escenario — sus valores
         # son fijos por definicion del circuito.
         # --------------------------------------------------------------
-        inv   = AmpInversor(r1=r1, r2=r2, gbw=GBW, vcc=VCC)
-        noinv = AmpNoInversor(r1=r1, r2=r2, gbw=GBW, vcc=VCC)
-        buf   = SeguidorVoltaje(gbw=GBW, vcc=VCC)
-        comp  = Comparador(vref=VCC / 2, gbw=GBW, vcc=VCC)  # Vref = mitad de la alimentacion
+        inv   = AmpInversor(r1=r1, r2=r2, gbw=gbw, vcc=vcc)
+        noinv = AmpNoInversor(r1=r1, r2=r2, gbw=gbw, vcc=vcc)
+        buf   = SeguidorVoltaje(gbw=gbw, vcc=vcc)
+        comp  = Comparador(vref=vcc / 2, gbw=gbw, vcc=vcc)  # Vref = mitad de la alimentacion
 
         # --------------------------------------------------------------
         # 2. Registrar los amps en el simulador y correr todos los analisis
