@@ -1,0 +1,180 @@
+\documentclass[12pt, letterpaper]{article}
+
+% ── Paquetes ──────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+% ── Márgenes ──────────────────────────────────────────────────────────────────
+\geometry{
+    top    = 2.5cm,
+    bottom = 2.5cm,
+    left   = 3cm,
+    right  = 2.5cm
+}
+
+% ── Color institucional UACJ ──────────────────────────────────────────────────
+\definecolor{uacjblue}{RGB}{0, 51, 153}
+
+% ── Encabezado / pie de página ────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{uacjblue}{\textbf{Universidad Autónoma de Ciudad Juárez}}}
+\fancyhead[R]{\small\textcolor{uacjblue}{Instituto de Ciencia y Tecnología}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{uacjblue}\leaders\hrule height \headrulewidth\hfill}}
+
+% ── Formato de secciones ──────────────────────────────────────────────────────
+\titleformat{\section}
+    {\large\bfseries\color{uacjblue}}
+    {\thesection.}{0.5em}{}[\titlerule]
+
+\titleformat{\subsection}
+    {\normalsize\bfseries\color{uacjblue!80!black}}
+    {\thesubsection.}{0.5em}{}
+
+% ── Interlineado ──────────────────────────────────────────────────────────────
+\setstretch{1.15}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ── PORTADA ───────────────────────────────────────────────────────────────────
+\begin{titlepage}
+    \centering
+    \vspace*{0.5cm}
+
+    % Escudo institucional
+    \includegraphics[width=0.38\textwidth]{escudo_uacj.png}\\[0.6cm]
+
+    % Nombre de la universidad
+    {\Large\bfseries\color{uacjblue}
+        Universidad Autónoma de Ciudad Juárez}\\[0.2cm]
+    \textcolor{uacjblue}{\rule{0.85\textwidth}{1.5pt}}\\[0.3cm]
+
+    % Instituto
+    {\large\bfseries Instituto de Ciencia y Tecnología}\\[0.6cm]
+
+    % Materia
+    \textbf{Materia:}\\[0.15cm]
+    {\large Simulación de Sistemas}\\[0.5cm]   % <── Cambia el nombre de la materia
+
+    % Proyecto
+    \textcolor{uacjblue}{\rule{0.6\textwidth}{0.8pt}}\\[0.3cm]
+    {\LARGE\bfseries Proyecto Final}\\[0.15cm]
+    {\large\itshape Título del Proyecto}\\[0.3cm]  % <── Cambia el título del proyecto
+    \textcolor{uacjblue}{\rule{0.6\textwidth}{0.8pt}}\\[0.6cm]
+
+    % Información académica en tabla
+    \begin{tabular}{r l}
+        \textbf{Docente:}         & Dr. Nombre del Docente \\[0.25cm]   % <── Cambia
+        \textbf{Alumno(s):}       & Apellido, Nombre \\
+                                  & Apellido, Nombre \\
+                                  & Apellido, Nombre \\[0.25cm]         % <── Agrega/quita
+        \textbf{Matrícula(s):}    & 000000 \\[0.25cm]                   % <── Cambia
+        \textbf{Fecha de entrega:}& Ciudad Juárez, Chih., \today \\
+    \end{tabular}
+
+    \vfill
+    {\small\textcolor{gray}{Ciudad Juárez, Chihuahua, México}}
+\end{titlepage}
+
+% ── Resto del documento con encabezado ───────────────────────────────────────
+\setcounter{page}{1}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Contexto del Problema}
+
+Describe aquí el contexto general en el que se desarrolla el problema. Incluye
+el área de aplicación, el entorno o sistema estudiado y la motivación para
+abordarlo mediante simulación.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Importancia del Problema}
+
+Explica por qué es relevante resolver o analizar este problema. Argumenta su
+impacto a nivel práctico, económico, social o científico, según corresponda.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Variables Involucradas}
+
+Enumera y describe las variables que intervienen en el sistema simulado.
+Clasifícalas según su naturaleza:
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Variables de estado:} \ldots
+    \item \textbf{Variables de decisión:} \ldots
+    \item \textbf{Variables aleatorias:} \ldots
+    \item \textbf{Variables de desempeño:} \ldots
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Entradas y Salidas del Sistema}
+
+\subsection{Entradas}
+Describe los datos o parámetros que el modelo recibe como información de
+entrada (datos históricos, distribuciones de probabilidad, parámetros de
+configuración, etc.).
+
+\subsection{Salidas}
+Describe los resultados que produce el modelo (métricas de desempeño,
+estadísticas, gráficas, reportes, etc.).
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Restricciones y Supuestos}
+
+\subsection{Restricciones}
+Lista las limitaciones del modelo que se deben respetar durante la simulación
+(recursos disponibles, capacidades máximas, condiciones de frontera, etc.).
+
+\subsection{Supuestos}
+Presenta los supuestos que se asumen para simplificar el modelo y hacer viable
+la simulación (p.\,ej., distribuciones de probabilidad, comportamientos
+deterministas, horizontes de tiempo, etc.).
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Objetivo de la Simulación}
+
+Redacta el objetivo general y, de ser necesario, los objetivos específicos que
+se persiguen con el estudio de simulación.
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Objetivo general:} \ldots
+    \item \textbf{Objetivos específicos:}
+    \begin{itemize}
+        \item \ldots
+        \item \ldots
+    \end{itemize}
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Alcances y Limitaciones}
+
+\subsection{Alcances}
+Delimita hasta dónde llega el modelo; qué aspectos del sistema real sí son
+representados y qué nivel de detalle se contempla.
+
+\subsection{Limitaciones}
+Menciona las restricciones del estudio que impiden representar el sistema de
+forma completa o perfecta (falta de datos, tiempo, software, etc.).
+
+% ══════════════════════════════════════════════════════════════════════════════
+% Referencias (opcional)
+% \newpage
+% \section*{Referencias}
+% \begin{thebibliography}{9}
+%   \bibitem{referencia1} Autor, A. (Año). \textit{Título}. Editorial.
+% \end{thebibliography}
+
+\end{document}
