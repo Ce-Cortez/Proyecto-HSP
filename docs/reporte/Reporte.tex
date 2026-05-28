@@ -94,9 +94,31 @@
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Contexto del Problema}
 
-Describe aquí el contexto general en el que se desarrolla el problema. Incluye
-el área de aplicación, el entorno o sistema estudiado y la motivación para
-abordarlo mediante simulación.
+Los amplificadores operacionales (op-amps) son componentes fundamentales en el
+diseño de sistemas electrónicos analógicos. Se emplean en una amplia variedad de
+aplicaciones: acondicionamiento de señales, instrumentación, control, filtrado y
+procesamiento de audio, entre otras. Su versatilidad radica en que, mediante la
+selección adecuada de resistencias externas, una misma pastilla puede configurarse
+como amplificador inversor, no inversor, seguidor de voltaje o comparador, cada
+uno con un comportamiento distinto en ganancia y ancho de banda.
+
+En la práctica, los componentes pasivos utilizados en estos circuitos —principalmente
+resistencias— no son perfectos: presentan tolerancias de fabricación que provocan
+que su valor real difiera del nominal. Una resistencia de \(1\,\text{k}\Omega\) con
+tolerancia del \(\pm5\,\%\) puede tomar cualquier valor entre \(950\,\Omega\) y
+\(1{,}050\,\Omega\). Esta variabilidad se propaga directamente a la ganancia del
+circuito, lo que puede comprometer el cumplimiento de especificaciones en aplicaciones
+de precisión.
+
+El presente proyecto estudia este problema mediante simulación computacional en
+Python. Se modela un op-amp genérico de la familia LM741/\(\mu\)A741 con producto
+ganancia-ancho de banda de \(1\,\text{MHz}\) y alimentación de \(\pm15\,\text{V}\),
+operando en tres escenarios de ganancia: baja (\(\times 10\)), media (\(\times 47\))
+y alta (\(\times 100\)). Para cada configuración y escenario se cuantifica el
+impacto estadístico de las tolerancias mediante el método de Monte Carlo con
+\(1{,}000\) muestras por corrida, generando distribuciones de ganancia, curvas de
+convergencia y diagramas de Bode que permiten evaluar el comportamiento del sistema
+antes de cualquier implementación física.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Importancia del Problema}
