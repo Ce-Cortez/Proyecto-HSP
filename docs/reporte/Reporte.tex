@@ -116,7 +116,7 @@ ganancia resultante en cada caso y se obtiene la distribución estadística
 del parámetro de interés. Este enfoque permite cuantificar, antes de
 construir cualquier prototipo, qué fracción de unidades de producción
 quedaría fuera de especificación para cada nivel de tolerancia comercial
-(\(\pm 1\,\%\), \(\pm 5\,\%\) y \(\pm 10\,\%\)).
+(\(\pm 1\,\text{\%}\), \(\pm 5\,\text{\%}\) y \(\pm 10\,\text{\%}\)).
 
 
 
@@ -437,7 +437,7 @@ de la simulación Monte Carlo:
               \item Configuración del amplificador: inversor, no inversor o
                     seguidor de voltaje.
               \item \(t\): nivel de tolerancia comercial de las resistencias
-                    (\(1\,\%\), \(5\,\%\) o \(10\,\%\)).
+                    (\(1\,\text{\%}\), \(5\,\text{\%}\) o \(10\,\text{\%}\)).
               \item \(N = 1{,}000\): número de iteraciones Monte Carlo.
           \end{itemize}
 
@@ -483,7 +483,7 @@ de la simulación Monte Carlo:
               \item \(P(\text{fallo})\): fracción de muestras cuya ganancia cae
                     fuera del intervalo
                     \(\bigl[\mu_{A_v}^{(1\%)}\!\pm 3\,\sigma_{A_v}^{(1\%)}\bigr]\),
-                    usando la distribución al \(1\,\%\) como referencia de aceptación.
+                    usando la distribución al \(1\,\text{\%}\) como referencia de aceptación.
               \item \(\mathrm{BW} = \mathrm{GBP}\,/\,|\mu_{A_v}|\): ancho de banda
                     efectivo del amplificador en Hz.
           \end{itemize}
@@ -518,7 +518,7 @@ que definen cada escenario de análisis.
 
     \item \textbf{Parámetros de la simulación Monte Carlo:}
           \begin{itemize}[leftmargin=2em]
-              \item \(t \in \{1\,\%,\, 5\,\%,\, 10\,\%\}\): niveles de tolerancia
+              \item \(t \in \{1\,\text{\%},\, 5\,\text{\%},\, 10\,\text{\%}\}\): niveles de tolerancia
                     comercial de las resistencias.
               \item \(N = 1{,}000\): número de iteraciones por corrida.
               \item Rango de frecuencias para el diagrama de Bode:
@@ -697,9 +697,9 @@ de media y desviación estándar para cada combinación de escenario y toleranci
         Tolerancia & \(\mu_{R_1}\) (\(\Omega\)) & \(\sigma_{R_1}\) (\(\Omega\))
                    & \(\mu_{R_2}\) (\(\Omega\)) & \(\sigma_{R_2}\) (\(\Omega\)) \\
         \midrule
-        \(\pm 1\,\%\)  & 1000 & 10  & 10\,000 & 100  \\
-        \(\pm 5\,\%\)  & 1000 & 50  & 10\,000 & 500  \\
-        \(\pm 10\,\%\) & 1000 & 100 & 10\,000 & 1000 \\
+        \(\pm 1\,\text{\%}\)  & 1000 & 10  & 10\,000 & 100  \\
+        \(\pm 5\,\text{\%}\)  & 1000 & 50  & 10\,000 & 500  \\
+        \(\pm 10\,\text{\%}\) & 1000 & 100 & 10\,000 & 1000 \\
         \bottomrule
     \end{tabular}
 \end{table}
