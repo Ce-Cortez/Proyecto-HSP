@@ -22,12 +22,15 @@ class VisualizadorResultados:
         output_dir: carpeta donde se guardan los .png (se crea si no existe)
     """
 
-    def __init__(self, output_dir: str = "outputs/graficas"):
+    def __init__(self, output_dir: str = "outputs/graficas", chip_nombre: str = ""):
         self._output_dir = output_dir
-        # Creamos la carpeta de salida si no existe todavia
-        os.makedirs(output_dir, exist_ok=True)
+        # Prefijo que se antepone a cada nombre de archivo (ej. "LM741_")
+        self._prefijo = f"{chip_nombre}_" if chip_nombre else ""
+        # Creamos la carpeta raiz y cada subcarpeta por tipo de grafica
+        for sub in ("bode", "monte_carlo", "convergencia", "comparacion", "heatmaps"):
+            os.makedirs(os.path.join(output_dir, sub), exist_ok=True)
 
-    def _guardar_o_mostrar(self, nombre_archivo: str, guardar: bool):
+    def _guardar_o_mostrar(self, nombre_archivo: str, guardar: bool, subfolder: str = ""):
         """
         Cierre estandar de cada figura: aplica layout ajustado y
         guarda o muestra segun el parametro guardar.
@@ -36,10 +39,11 @@ class VisualizadorResultados:
         Args:
             nombre_archivo : nombre del archivo .png a guardar
             guardar        : True = guardar en disco, False = mostrar en pantalla
+            subfolder      : subcarpeta dentro de output_dir (ej. "bode", "monte_carlo")
         """
         plt.tight_layout()
         if guardar:
-            ruta = os.path.join(self._output_dir, nombre_archivo)
+            ruta = os.path.join(self._output_dir, subfolder, nombre_archivo)
             plt.savefig(ruta, dpi=150, bbox_inches='tight')
             print(f"  Guardado: {ruta}")
         else:
@@ -84,8 +88,8 @@ class VisualizadorResultados:
         ax_fase.set_xlabel("Frecuencia (Hz)")
         ax_fase.grid(True, which='both', alpha=0.4)
 
-        nombre_archivo = f"bode_{amp.nombre.replace(' ', '_')}.png"
-        self._guardar_o_mostrar(nombre_archivo, guardar)
+        nombre_archivo = f"{self._prefijo}bode_{amp.nombre.replace(' ', '_')}.png"
+        self._guardar_o_mostrar(nombre_archivo, guardar, subfolder="bode")
 
     def plot_histograma_mc(self, resultados_mc: dict, amp_nombre: str, guardar: bool = True):
         """
@@ -129,8 +133,8 @@ class VisualizadorResultados:
             ax.set_ylabel("Frecuencia")
             ax.legend(fontsize=7)
 
-        nombre_archivo = f"mc_{amp_nombre.replace(' ', '_')}.png"
-        self._guardar_o_mostrar(nombre_archivo, guardar)
+        nombre_archivo = f"{self._prefijo}mc_{amp_nombre.replace(' ', '_')}.png"
+        self._guardar_o_mostrar(nombre_archivo, guardar, subfolder="monte_carlo")
 
     def plot_comparacion_ancho_banda(self, comparacion: dict, guardar: bool = True):
         """
@@ -161,7 +165,7 @@ class VisualizadorResultados:
             ax.text(val * 1.05, bar.get_y() + bar.get_height() / 2,
                     f'{val:,.0f} Hz', va='center', fontsize=9)
 
-        self._guardar_o_mostrar("comparacion_bw.png", guardar)
+        self._guardar_o_mostrar(f"{self._prefijo}comparacion_bw.png", guardar, subfolder="comparacion")
 
     def plot_convergencia(self, convergencia: dict, amp_nombre: str, guardar: bool = True):
         """
@@ -201,8 +205,8 @@ class VisualizadorResultados:
         ax_sig.set_xlabel("Numero de Muestras")
         ax_sig.grid(True, which='both', alpha=0.4)
 
-        nombre_archivo = f"convergencia_{amp_nombre.replace(' ', '_')}.png"
-        self._guardar_o_mostrar(nombre_archivo, guardar)
+        nombre_archivo = f"{self._prefijo}convergencia_{amp_nombre.replace(' ', '_')}.png"
+        self._guardar_o_mostrar(nombre_archivo, guardar, subfolder="convergencia")
 
     def plot_heatmap_ganancia(
         self,
@@ -254,5 +258,5 @@ class VisualizadorResultados:
             fontsize=13, fontweight='bold'
         )
 
-        nombre_archivo = f"heatmap_{amp_name}.png"
-        self._guardar_o_mostrar(nombre_archivo, guardar)
+        nombre_archivo = f"{self._prefijo}heatmap_{amp_name}.png"
+        self._guardar_o_mostrar(nombre_archivo, guardar, subfolder="heatmaps")
