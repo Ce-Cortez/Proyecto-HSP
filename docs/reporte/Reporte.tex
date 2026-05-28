@@ -123,8 +123,36 @@ antes de cualquier implementación física.
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Importancia del Problema}
 
-Explica por qué es relevante resolver o analizar este problema. Argumenta su
-impacto a nivel práctico, económico, social o científico, según corresponda.
+El análisis del efecto de las tolerancias en amplificadores operacionales tiene
+relevancia en múltiples dimensiones.
+
+\textbf{Impacto práctico.}
+Los op-amps se integran en sistemas de instrumentación médica, control industrial,
+adquisición de datos y procesamiento de audio, donde la ganancia debe mantenerse
+dentro de márgenes estrictos. Una desviación superior a la tolerancia permitida
+puede traducirse en mediciones erróneas, pérdida de estabilidad de la
+retroalimentación o incumplimiento de normativas de calidad. Conocer con
+anticipación la distribución estadística de la ganancia real —antes de construir
+cualquier prototipo— permite al diseñador seleccionar componentes con la tolerancia
+adecuada y reducir el riesgo de falla en campo.
+
+\textbf{Impacto económico.}
+En producción en serie, incluso una tolerancia aparentemente pequeña puede provocar
+que un porcentaje significativo de unidades quede fuera de especificación. El método
+de Monte Carlo, aplicado en la etapa de diseño, cuantifica ese porcentaje y
+permite comparar el costo de usar resistencias de mayor precisión contra el costo
+de rechazar o retrabajar unidades defectuosas. De este modo, la simulación actúa
+como herramienta de optimización económica antes de comprometer recursos en
+manufactura.
+
+\textbf{Impacto metodológico y científico.}
+La propagación de incertidumbres en sistemas analógicos es un problema clásico del
+análisis de sensibilidad y del diseño para la manufactura (\textit{Design for
+Manufacturability}). Incorporar la simulación estadística —en lugar de análisis de
+caso peor (\textit{worst-case})— produce estimaciones más realistas de la
+variabilidad del sistema y fomenta el uso de herramientas computacionales modernas
+en la formación de ingenieros. El presente proyecto contribuye a ese objetivo al
+integrar Python como entorno de simulación reproducible y documentado.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Variables Involucradas}
@@ -182,12 +210,54 @@ se persiguen con el estudio de simulación.
 \section{Alcances y Limitaciones}
 
 \subsection{Alcances}
-Delimita hasta dónde llega el modelo; qué aspectos del sistema real sí son
-representados y qué nivel de detalle se contempla.
+
+El modelo de simulación desarrollado abarca los siguientes aspectos:
+
+\begin{itemize}[leftmargin=2em]
+    \item Se representan tres configuraciones clásicas del op-amp: amplificador
+          inversor, amplificador no inversor y seguidor de voltaje, cada una con
+          tres niveles de ganancia nominal (\(\times 10\), \(\times 47\) y
+          \(\times 100\)).
+    \item Se modela el comportamiento en frecuencia del op-amp genérico
+          LM741/\(\mu\)A741 mediante su función de transferencia de primer orden,
+          considerando un producto ganancia-ancho de banda de \(1\,\text{MHz}\)
+          y una alimentación de \(\pm 15\,\text{V}\).
+    \item Se cuantifica el efecto estadístico de las tolerancias de las
+          resistencias externas sobre la ganancia real del circuito, empleando el
+          método de Monte Carlo con \(1{,}000\) muestras por escenario.
+    \item El simulador genera distribuciones de ganancia (histogramas con media
+          y desviación estándar), curvas de convergencia de la media y diagramas
+          de Bode (magnitud y fase) para cada configuración.
+    \item Todo el entorno de simulación está implementado en Python, lo que
+          garantiza reproducibilidad y facilita la incorporación de nuevos
+          escenarios sin herramientas de software propietario.
+\end{itemize}
 
 \subsection{Limitaciones}
-Menciona las restricciones del estudio que impiden representar el sistema de
-forma completa o perfecta (falta de datos, tiempo, software, etc.).
+
+El estudio presenta las siguientes restricciones que acotan su alcance:
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Sin validación experimental:} los resultados son exclusivamente
+          computacionales; no se construyeron prototipos físicos para contrastar
+          las distribuciones simuladas con mediciones reales.
+    \item \textbf{Modelo ideal del op-amp:} se ignoran efectos de segundo orden
+          como voltaje de offset, corrientes de polarización, ruido intrínseco y
+          deriva térmica, los cuales pueden ser relevantes en aplicaciones de
+          alta precisión.
+    \item \textbf{Única fuente de variabilidad:} solo se consideran las
+          tolerancias de las resistencias externas. Variaciones en la fuente de
+          alimentación, temperatura ambiente y envejecimiento de los componentes
+          quedan fuera del modelo.
+    \item \textbf{Familia de dispositivos limitada:} el análisis se circunscribe
+          al op-amp LM741/\(\mu\)A741. Op-amps de alta velocidad, bajo ruido o
+          de precisión —con características de transferencia distintas— requieren
+          modelos adicionales.
+    \item \textbf{Número de muestras fijo:} se utilizan \(1{,}000\) iteraciones
+          Monte Carlo, suficientes para estimar la tendencia central y la
+          dispersión, pero insuficientes para caracterizar eventos de baja
+          probabilidad en los extremos de la distribución.
+\end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
 % Referencias (opcional)
