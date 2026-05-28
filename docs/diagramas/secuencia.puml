@@ -62,22 +62,28 @@ Usuario -> Main : ejecutar main.py
 
 ' Escenarios predefinidos en codigo.
 ' Cada escenario define un par R1/R2 que determina la ganancia del circuito.
-' GBW y Vcc son constantes del op-amp ideal, no configurables por escenario.
+' GBW y Vcc provienen del catalogo OP_AMPS segun el chip seleccionado en CHIP_ACTIVO.
 note over Main
   escenarios = [
     {nombre: Ganancia baja,  r1: 1000, r2: 10000},
     {nombre: Ganancia media, r1: 1000, r2: 47000},
     {nombre: Ganancia alta,  r1: 1000, r2: 100000}
   ]
-  gbw = 1e6 Hz, vcc = 15.0 V
+  OP_AMPS = {
+    LM741: {gbw: 1.0e6 Hz, vcc: 15.0 V},
+    TL081: {gbw: 3.0e6 Hz, vcc: 15.0 V},
+    LM318: {gbw: 15.0e6 Hz, vcc: 15.0 V}
+  }
+  CHIP_ACTIVO = "LM741"
+  chip = OP_AMPS[CHIP_ACTIVO]
 end note
 
 ' Para cada escenario se crean 4 instancias (una por configuracion)
 ' y se registran en el simulador. El simulador se reinicia por escenario.
 loop para cada escenario (3 iteraciones)
 
-  ' Cada subclase recibe r1/r2 del escenario y las constantes gbw/vcc
-  Main -> Amp : __init__(r1, r2, gbw=1e6, vcc=15.0) x4
+  ' Cada subclase recibe r1/r2 del escenario y gbw/vcc del chip seleccionado
+  Main -> Amp : __init__(r1, r2, gbw=chip["gbw"], vcc=chip["vcc"]) x4
   activate Amp
   Amp --> Main : instancias creadas (Inversor, NoInversor, Seguidor, Comparador)
   deactivate Amp
@@ -177,36 +183,38 @@ deactivate MC
 ' ============================================================
 == Visualizacion ==
 
-Main -> Viz : __init__(output_dir="outputs/graficas")
+' chip_nombre prefija todos los archivos de salida (ej. "LM741_")
+' Subcarpetas creadas automaticamente: bode/, monte_carlo/, convergencia/, comparacion/, heatmaps/
+Main -> Viz : __init__(output_dir="outputs/graficas", chip_nombre=CHIP_ACTIVO)
 activate Viz
 
 ' Bode: magnitud (dB) y fase (grados) vs frecuencia (1 Hz a 10 MHz)
 loop para cada amp excepto Comparador (3 amps)
   Main -> Viz : plot_bode(amp)
-  Viz --> Main : bode_{nombre}.png guardado
+  Viz --> Main : bode/LM741_bode_{nombre}.png guardado
 end
 
 ' Histograma: distribucion de ganancia por nivel de tolerancia
 loop para cada resultado MC (3 amps)
   Main -> Viz : plot_histograma_mc(resultados_mc, amp_nombre)
-  Viz --> Main : mc_{nombre}.png guardado
+  Viz --> Main : monte_carlo/LM741_mc_{nombre}.png guardado
 end
 
 ' Grafica comparativa: ancho de banda de las 4 configuraciones
 Main -> Viz : plot_comparacion_ancho_banda(comparacion)
-Viz --> Main : comparacion_bw.png guardado
+Viz --> Main : comparacion/LM741_comparacion_bw.png guardado
 
 ' Convergencia: como estabilizan media y sigma al aumentar N muestras
 Main -> Viz : plot_convergencia(convergencia, amp_nombre="AmpInversor")
-Viz --> Main : convergencia_AmpInversor.png guardado
+Viz --> Main : convergencia/LM741_convergencia_AmpInversor.png guardado
 
 ' Heatmap: ganancia en dB para todo el espacio R1/R2
 ' Solo para configs con ganancia variable (Inversor y NoInversor)
 Main -> Viz : plot_heatmap_ganancia(AmpInversor, r1_range, r2_range)
-Viz --> Main : heatmap_AmpInversor.png guardado
+Viz --> Main : heatmaps/LM741_heatmap_AmpInversor.png guardado
 
 Main -> Viz : plot_heatmap_ganancia(AmpNoInversor, r1_range, r2_range)
-Viz --> Main : heatmap_AmpNoInversor.png guardado
+Viz --> Main : heatmaps/LM741_heatmap_AmpNoInversor.png guardado
 
 deactivate Viz
 
