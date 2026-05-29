@@ -288,7 +288,7 @@ El estudio presenta las siguientes restricciones que acotan su alcance:
 Un amplificador operacional es un dispositivo activo de alta ganancia diferencial
 que amplifica la diferencia de voltaje entre sus terminales de entrada. En
 configuración de lazo cerrado, resistencias externas fijan la ganancia según la
-topología elegida. Las tres configuraciones estudiadas en este proyecto son:
+topología elegida \cite{sedra2015}. Las tres configuraciones estudiadas en este proyecto son:
 
 \begin{itemize}[leftmargin=2em]
     \item \textbf{Inversor:} la señal se aplica a la entrada inversora a través
@@ -307,7 +307,7 @@ topología elegida. Las tres configuraciones estudiadas en este proyecto son:
 \subsection{Función de Transferencia de Primer Orden}
 
 El op-amp LM741/\(\mu\)A741 % chktex 21
-se modela mediante una función de transferencia de primer orden que captura
+se modela mediante una función de transferencia de primer orden \cite{razavi2017} que captura
 la caída de ganancia en lazo abierto a frecuencias elevadas:
 
 \begin{equation}
@@ -330,7 +330,7 @@ La frecuencia \(f_c\) es el punto a \(-3\,\text{dB}\): para ganancias altas,
 
 \subsection{Método de Monte Carlo}
 
-El método de Monte Carlo es una técnica de simulación estadística que estima
+El método de Monte Carlo es una técnica de simulación estadística \cite{robert2004} que estima
 propiedades de un sistema mediante la generación repetida de muestras aleatorias.
 Su aplicación a la propagación de incertidumbres sigue tres pasos:
 
@@ -729,7 +729,7 @@ responsabilidad única:
           (\texttt{simulador.py} para el análisis determinista;
           \texttt{monte\_carlo.py} para el análisis estadístico).
     \item \texttt{src/visualizacion/visualizador.py}: generación de todas
-          las gráficas mediante \texttt{Matplotlib}.
+          las gráficas mediante \texttt{Matplotlib} \cite{hunter2007}.
     \item \texttt{src/reporte/generador.py}: escritura del reporte de texto
           plano con \texttt{datetime} y formato de cadenas de Python.
 \end{itemize}
@@ -737,7 +737,7 @@ responsabilidad única:
 \subsection{Decisiones de Implementación}
 
 \begin{itemize}[leftmargin=2em]
-    \item \textbf{Vectorización con NumPy:} el análisis Monte Carlo calcula
+    \item \textbf{Vectorización con NumPy \cite{harris2020}:} el análisis Monte Carlo calcula
           las \(1{,}000\) ganancias en una sola operación matricial
           (\(-R_2/R_1\) sobre arrays), evitando bucles Python y reduciendo
           el tiempo de ejecución en uno o dos órdenes de magnitud.
