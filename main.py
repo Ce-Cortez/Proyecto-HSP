@@ -113,7 +113,7 @@ def main():
 
         # Bode para los 3 amps con retroalimentacion (Comparador no tiene Bode)
         for amp in [inv, noinv, buf]:
-            viz.plot_bode(amp)
+            viz.plot_bode(amp, escenario=nombre_esc)
 
         # Histogramas MC — uno por amplificador con los 3 niveles de tolerancia
         for amp in [inv, noinv, buf]:

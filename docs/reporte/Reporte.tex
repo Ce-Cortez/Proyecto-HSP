@@ -2,7 +2,7 @@
 
 % ── Paquetes ──────────────────────────────────────────────────────────────────
 \usepackage[T1]{fontenc}
-\usepackage[spanish]{babel}
+\usepackage[spanish, es-tabla]{babel}
 \usepackage{amsmath}
 \usepackage{geometry}
 \usepackage{graphicx}
@@ -13,8 +13,37 @@
 \setlength{\parskip}{0.5\baselineskip}
 \setlength{\parindent}{0pt}
 \usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{subcaption}
 \usepackage{enumitem}
 \usepackage{xcolor}
+\usepackage{listings}
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\tiny,
+    keywordstyle=\color{blue!80!black}\bfseries,
+    stringstyle=\color{red!60!black},
+    commentstyle=\color{green!45!black}\itshape,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=8pt,
+    showstringspaces=false,
+    breaklines=true,
+    breakatwhitespace=true,
+    frame=single,
+    framerule=0.4pt,
+    framesep=4pt,
+    tabsize=4,
+    captionpos=b,
+    literate=
+      {á}{{\'{a}}}1 {é}{{\'{e}}}1 {í}{{\'{i}}}1 {ó}{{\'{o}}}1 {ú}{{\'{u}}}1
+      {Á}{{\'{A}}}1 {É}{{\'{E}}}1 {Í}{{\'{I}}}1 {Ó}{{\'{O}}}1 {Ú}{{\'{U}}}1
+      {ñ}{{\~{n}}}1 {Ñ}{{\~{N}}}1 {ü}{{\"{u}}}1
+      {±}{{$\pm$}}1
+      {—}{{---}}1 {–}{{--}}1,
+}
+\renewcommand{\lstlistingname}{M\'odulo}
 \usepackage[pageanchor=false]{hyperref}
 \usepackage{cite}       % comprime citas IEEE: [1]--[3] en lugar de [1],[2],[3]
 
@@ -270,10 +299,12 @@ El estudio presenta las siguientes restricciones que acotan su alcance:
           tolerancias de las resistencias externas. Variaciones en la fuente de
           alimentación, temperatura ambiente y envejecimiento de los componentes
           quedan fuera del modelo.
-    \item \textbf{Familia de dispositivos limitada:} el análisis cubre
-          exclusivamente el op-amp LM741\slash\(\mu\)A741; dispositivos de alta % chktex 21
-          velocidad, bajo ruido o precisión —con características de transferencia
-          distintas— requieren modelos adicionales.
+    \item \textbf{Familia de dispositivos del catálogo:} el simulador incluye
+          tres op-amps de referencia (LM741, TL081 y LM318); la comparación
+          sistemática entre chips queda fuera del alcance de este trabajo.
+          Dispositivos con características de transferencia distintas
+          —amplificadores de instrumentación, op-amps de precisión
+          \textit{rail-to-rail}— requieren modelos adicionales.
     \item \textbf{Número de muestras fijo:} se utilizan \(1{,}000\) iteraciones
           Monte Carlo, suficientes para estimar la tendencia central y la
           dispersión, pero insuficientes para caracterizar eventos de baja
@@ -281,6 +312,7 @@ El estudio presenta las siguientes restricciones que acotan su alcance:
 \end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
+\newpage
 \section{Marco Teórico}
 
 \subsection{Amplificador Operacional}
@@ -388,6 +420,20 @@ específica a cada subclase concreta:
           lanzar \texttt{NotImplementedError}, evitando usos incorrectos.
 \end{itemize}
 
+La Figura~\ref{fig:diagrama_clases} muestra el diagrama de clases completo del
+simulador, incluyendo atributos, métodos y relaciones entre las ocho clases del
+sistema.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{../diagramas/Diagrama_Clases.png}
+    \caption{Diagrama de clases del simulador de amplificadores operacionales.
+             Las flechas de herencia (\(\triangleleft\!\!-\!\!-\)) parten de cada
+             subclase hacia \texttt{AmplificadorBase}; la composición y agregación
+             indican las relaciones entre los módulos de simulación y salida.}
+    \label{fig:diagrama_clases}
+\end{figure}
+
 \subsection{Módulos del Sistema}
 
 Además de la jerarquía de amplificadores, el proyecto se organiza en los
@@ -414,7 +460,24 @@ siguientes módulos:
           en \texttt{outputs/reportes/} con el resumen tabular de resultados.
 \end{itemize}
 
+\newpage
+El diagrama de secuencia de la Figura~\ref{fig:diagrama_secuencia} ilustra el
+flujo de mensajes entre objetos durante una corrida completa del simulador,
+organizado en cinco fases: configuración, análisis principal, Monte Carlo,
+visualización y reporte.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../diagramas/Diagrama_Secuencia.png}
+    \caption{Diagrama de secuencia del simulador. Cada flecha representa una
+             llamada entre objetos; los bloques \texttt{loop} y \texttt{alt}
+             modelan los ciclos por escenario y la exclusión del Comparador
+             en las fases de Bode y Monte Carlo.}
+    \label{fig:diagrama_secuencia}
+\end{figure}
+
 % ══════════════════════════════════════════════════════════════════════════════
+\newpage
 \section{Metodología de Simulación}
 
 \subsection{Variables Involucradas}
@@ -482,7 +545,7 @@ de la simulación Monte Carlo:
                     inducida por las tolerancias.
               \item \(P(\text{fallo})\): fracción de muestras cuya ganancia cae
                     fuera del intervalo
-                    \(\bigl[\mu_{A_v}^{(1\%)}\!\pm 3\,\sigma_{A_v}^{(1\%)}\bigr]\),
+                    \(\bigl[\mu_{A_v}^{(1\text{\%})}\!\pm 3\,\sigma_{A_v}^{(1\text{\%})}\bigr]\),
                     usando la distribución al \(1\,\text{\%}\) como referencia de aceptación.
               \item \(\mathrm{BW} = \mathrm{GBP}\,/\,|\mu_{A_v}|\): ancho de banda
                     efectivo del amplificador en Hz.
@@ -753,24 +816,323 @@ responsabilidad única:
           probarse de forma independiente; añadir una nueva configuración
           requiere únicamente crear una subclase de
           \texttt{AmplificadorBase} sin tocar el resto del sistema.
+    \item \textbf{Catálogo de op-amps extensible:} el diccionario
+          \texttt{OP\_AMPS} en \texttt{main.py} centraliza las
+          especificaciones de cada dispositivo (GBP y \(V_{cc}\));
+          cambiar la variable \texttt{CHIP\_ACTIVO} basta para repetir
+          todo el análisis con un chip distinto sin modificar ningún
+          otro módulo. El catálogo incluye tres dispositivos de referencia:
+          LM741 (\(\mathrm{GBP} = 1\,\text{MHz}\)),
+          TL081 (\(\mathrm{GBP} = 3\,\text{MHz}\)) y
+          LM318 (\(\mathrm{GBP} = 15\,\text{MHz}\)).
 \end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Resultados y Gráficas}
 
-% Completar con las gráficas generadas por el simulador y su análisis.
+\subsection{Resultados Deterministas}
+
+La Tabla~\ref{tab:resultados_det} resume la ganancia, la frecuencia de corte y
+el ancho de banda de las tres configuraciones estudiadas para cada uno de los
+tres escenarios de diseño, utilizando el op-amp LM741
+(\(\mathrm{GBP} = 1\,\text{MHz}\), \(V_{cc} = \pm 15\,\text{V}\)).
+Los valores son deterministas —calculados directamente de las fórmulas del
+modelo de primer orden— sin variación estadística.
+
+\begin{table}[h]
+    \centering
+    \caption{Ganancia, frecuencia de corte y ancho de banda por configuración
+             y escenario (LM741, \(\mathrm{GBP} = 1\,\text{MHz}\)).}
+    \label{tab:resultados_det}
+    \begin{tabular}{llrrrr}
+        \toprule
+        \textbf{Escenario} & \textbf{Configuración}
+            & \boldmath$A_v$
+            & \boldmath$|A_v|$ \textbf{(dB)}
+            & \boldmath$f_c$ \textbf{(kHz)}
+            & \textbf{BW (kHz)} \\
+        \midrule
+        \multirow{3}{*}{Ganancia Baja}
+            & Inversor      & $-10$  & 20.00 & 100.00  & 100.00  \\
+            & No Inversor   & $+11$  & 20.83 &  90.91  &  90.91  \\
+            & Seguidor      & $+1$   &  0.00 & 1000.00 & 1000.00 \\
+        \midrule
+        \multirow{3}{*}{Ganancia Media}
+            & Inversor      & $-47$  & 33.44 &  21.28  &  21.28  \\
+            & No Inversor   & $+48$  & 33.62 &  20.83  &  20.83  \\
+            & Seguidor      & $+1$   &  0.00 & 1000.00 & 1000.00 \\
+        \midrule
+        \multirow{3}{*}{Ganancia Alta}
+            & Inversor      & $-100$ & 40.00 &  10.00  &  10.00  \\
+            & No Inversor   & $+101$ & 40.09 &   9.90  &   9.90  \\
+            & Seguidor      & $+1$   &  0.00 & 1000.00 & 1000.00 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Tres observaciones se desprenden directamente de la tabla.
+Primero, el seguidor de voltaje mantiene \(f_c = \mathrm{GBP} = 1\,\text{MHz}\)
+en los tres escenarios, ya que su ganancia unitaria aprovecha todo el producto
+ganancia-ancho de banda disponible del op-amp.
+Segundo, al incrementar la ganancia de \(\times 10\) a \(\times 100\),
+la frecuencia de corte del inversor se reduce en un factor de diez
+(de 100\,kHz a 10\,kHz), confirmando la relación inversa
+\(f_c = \mathrm{GBP}/|A_v|\).
+Tercero, el inversor y el no inversor presentan ganancias casi idénticas en
+valor absoluto para cada escenario (\(-10\) vs.\ \(+11\), \(-47\) vs.\ \(+48\),
+\(-100\) vs.\ \(+101\)), con una diferencia de exactamente una unidad debida
+al término constante de la fórmula del no inversor
+(\(A_v = 1 + R_2/R_1\)).
+
+% ══════════════════════════════════════════════════════════════════════════════
+\subsection{Diagramas de Bode}
+
+Los diagramas de Bode muestran la respuesta en frecuencia de cada configuración:
+el panel superior representa la magnitud de la ganancia en dB y el inferior la
+fase introducida por el circuito. Se presentan los tres diagramas correspondientes
+al escenario de Ganancia Alta (\(R_1 = 1\,\text{k}\Omega\),
+\(R_2 = 100\,\text{k}\Omega\)), que ilustra con mayor claridad la degradación
+del ancho de banda al aumentar la ganancia.
+
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{../../outputs/graficas/bode/LM741_bode_Amplificador_Inversor_Ganancia_Alta.png}
+        \caption{Inversor (\(A_v = -100\))}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{../../outputs/graficas/bode/LM741_bode_Amplificador_No_Inversor_Ganancia_Alta.png}
+        \caption{No Inversor (\(A_v = +101\))}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{../../outputs/graficas/bode/LM741_bode_Seguidor_de_Voltaje_(Buffer)_Ganancia_Alta.png}
+        \caption{Seguidor (\(A_v = +1\))}
+    \end{subfigure}
+    \caption{Diagramas de Bode — escenario Ganancia Alta (LM741).
+             La línea roja punteada indica \(f_c\); la línea gris punteada
+             marca el nivel de \(-3\,\text{dB}\).}
+    \label{fig:bode_alta}
+\end{figure}
+
+El inversor y el no inversor presentan \(f_c \approx 10\,\text{kHz}\), de modo
+que la ganancia ya ha caído 3\,dB antes de alcanzar esa frecuencia y continúa
+decayendo a razón de \(-20\,\text{dB/dec}\). El seguidor, con ganancia unitaria,
+utiliza todo el producto ganancia-ancho de banda disponible y mantiene respuesta
+plana hasta \(1\,\text{MHz}\), tres órdenes de magnitud por encima de las
+configuraciones de alta ganancia.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\subsection{Análisis Monte Carlo}
+
+Los histogramas de la Figura~\ref{fig:mc_inversor_alta} muestran la distribución
+de la ganancia del amplificador inversor en el escenario de Ganancia Alta para
+los tres niveles de tolerancia. Cada panel superpone la media y los límites
+\(\pm 3\sigma\) de la distribución al \(1\,\text{\%}\), usados como referencia de
+aceptación para calcular \(P(\text{fallo})\).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{../../outputs/graficas/monte_carlo/LM741_mc_Amplificador_Inversor_(Ganancia_Alta).png}
+    \caption{Distribución Monte Carlo de la ganancia del inversor —
+             escenario Ganancia Alta (\(A_{v,\text{nom}} = -100\)).
+             De izquierda a derecha: tolerancias \(\pm 1\,\text{\%}\),
+             \(\pm 5\,\text{\%}\) y \(\pm 10\,\text{\%}\).}
+    \label{fig:mc_inversor_alta}
+\end{figure}
+
+Con tolerancia del \(\pm 1\,\text{\%}\) la distribución es estrecha y prácticamente
+todos los circuitos quedan dentro de especificación (\(P(\text{fallo}) \approx 0\)).
+Al aumentar a \(\pm 5\,\text{\%}\) la dispersión crece y una fracción apreciable de
+muestras supera los límites; con \(\pm 10\,\text{\%}\) la probabilidad de fallo se
+eleva notablemente, lo que indica que resistencias de baja precisión resultan
+inadecuadas para diseños de alta ganancia con requisitos estrictos de exactitud.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\subsection{Convergencia del Estimador}
+
+La Figura~\ref{fig:convergencia} muestra cómo evolucionan la media y la
+desviación estándar de la ganancia al incrementar el número de muestras,
+para el amplificador inversor en el escenario de Ganancia Baja con
+tolerancia del \(\pm 5\,\text{\%}\).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.78\textwidth]{../../outputs/graficas/convergencia/LM741_convergencia_Amplificador_Inversor_(Ganancia_Baja).png}
+    \caption{Curva de convergencia Monte Carlo — inversor, escenario Ganancia Baja,
+             tolerancia \(\pm 5\,\text{\%}\). Panel superior: media de la ganancia;
+             panel inferior: desviación estándar.}
+    \label{fig:convergencia}
+\end{figure}
+
+Con menos de 50 muestras los estimadores fluctúan considerablemente. A partir de
+aproximadamente 200 muestras la media se estabiliza en torno a su valor de
+referencia y la desviación estándar deja de variar de forma significativa,
+lo que valida que \(N = 1{,}000\) iteraciones es una elección conservadora y
+suficiente para confiar en los resultados estadísticos del simulador.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\subsection{Comparación de Ancho de Banda}
+
+La Figura~\ref{fig:comparacion_bw} contrasta el ancho de banda de las cuatro
+configuraciones —incluyendo el comparador— en el escenario de Ganancia Alta.
+La escala logarítmica en el eje horizontal es necesaria porque los valores
+difieren en varios órdenes de magnitud.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.82\textwidth]{../../outputs/graficas/comparacion/LM741_comparacion_bw.png}
+    \caption{Comparación del ancho de banda por configuración —
+             escenario Ganancia Alta (LM741, \(\mathrm{GBP} = 1\,\text{MHz}\)).}
+    \label{fig:comparacion_bw}
+\end{figure}
+
+El seguidor de voltaje domina ampliamente con \(\mathrm{BW} = 1\,\text{MHz}\),
+seguido por las configuraciones de ganancia baja. El inversor y el no inversor
+de alta ganancia quedan relegados a \(\approx 10\,\text{kHz}\), confirmando que
+la ganancia y el ancho de banda son recursos intercambiables en un op-amp real,
+limitados por el producto \(\mathrm{GBP}\) del dispositivo.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\subsection{Mapa de Calor}
+
+Los mapas de calor de la Figura~\ref{fig:heatmaps} representan la ganancia
+en dB para todas las combinaciones de \(R_1\) y \(R_2\) en el rango de diseño
+(\(R_1 \in [500, 5{,}000]\,\Omega\), \(R_2 \in [1{,}000, 100{,}000]\,\Omega\)).
+Son herramientas de diseño deterministas: permiten identificar de un vistazo
+qué par \((R_1, R_2)\) produce la ganancia objetivo antes de correr cualquier
+simulación.
+
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../../outputs/graficas/heatmaps/LM741_heatmap_AmpInversor.png}
+        \caption{Amplificador Inversor (\(A_v = -R_2/R_1\))}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{../../outputs/graficas/heatmaps/LM741_heatmap_AmpNoInversor.png}
+        \caption{Amplificador No Inversor (\(A_v = 1 + R_2/R_1\))}
+    \end{subfigure}
+    \caption{Mapas de calor de ganancia en dB vs.\ \(R_1\) y \(R_2\).
+             El color indica la magnitud de la ganancia; tonos más claros
+             corresponden a mayor ganancia.}
+    \label{fig:heatmaps}
+\end{figure}
+
+En ambos mapas la ganancia aumenta al reducir \(R_1\) o aumentar \(R_2\),
+siguiendo la dependencia \(R_2/R_1\) de las fórmulas. La diferencia entre
+inversor y no inversor es el desplazamiento de una unidad en la escala de
+color, producto del término \(+1\) en la fórmula del no inversor; a ganancias
+elevadas (\(|A_v| \gg 1\)) ambos mapas son prácticamente idénticos.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Discusión}
 
-% Interpretar los resultados: comparar tolerancias, identificar configuraciones
-% más sensibles, comentar la convergencia de Monte Carlo.
+\subsection{Intercambio Ganancia–Ancho de Banda}
+
+El resultado más evidente del análisis determinista es la confirmación de la
+relación \(f_c = \mathrm{GBP}/|A_v|\): cada vez que la ganancia se multiplica
+por diez, el ancho de banda se divide por diez.
+En el LM741 (\(\mathrm{GBP} = 1\,\text{MHz}\)) esto implica que el inversor
+configurado para \(|A_v| = 100\) queda limitado a \(f_c \approx 10\,\text{kHz}\),
+una restricción severa para señales de audio superiores o para comunicaciones.
+El seguidor de voltaje, con ganancia unitaria, ocupa el extremo opuesto:
+aprovecha íntegramente el GBP y mantiene respuesta plana hasta \(1\,\text{MHz}\).
+Esta dualidad subraya que el GBP no es una figura de mérito absoluta sino un
+presupuesto que el diseñador reparte entre ganancia y velocidad según los
+requisitos de la aplicación.
+
+\subsection{Sensibilidad a la Tolerancia de Componentes}
+
+El análisis Monte Carlo revela una dependencia cuadrática aproximada entre
+la tolerancia de las resistencias y la dispersión de la ganancia.
+Con resistencias del \(\pm 1\,\text{\%}\) la probabilidad de fallo es
+prácticamente nula en los tres escenarios; al pasar a \(\pm 5\,\text{\%}\)
+ya se observa una fracción apreciable de muestras fuera de especificación;
+y con \(\pm 10\,\text{\%}\) el inversor de alta ganancia (\(|A_v| = 100\))
+presenta la mayor tasa de fallos, mientras que el seguidor de voltaje
+—cuya ganancia no depende de componentes externos— permanece inmune a la
+variación.
+
+La configuración más sensible es, consistentemente, el inversor de Ganancia
+Alta. La razón es que la expresión \(A_v = -R_2/R_1\) amplifica directamente
+el cociente de dos variables aleatorias, y cuanto mayor es el cociente nominal,
+mayor es la varianza relativa del resultado. El no inversor presenta una
+sensibilidad ligeramente menor porque el término aditivo \(+1\) en
+\(A_v = 1 + R_2/R_1\) amortigua la variación porcentual de la ganancia total.
+
+\subsection{Convergencia del Estimador Monte Carlo}
+
+La curva de convergencia muestra que con menos de 50 muestras los estimadores
+son inestables y no reproducibles entre ejecuciones. A partir de
+\(N \approx 200\) la media y la desviación estándar se estabilizan, y la mejora
+adicional al pasar de 200 a 1\,000 muestras es marginal. La elección de
+\(N = 1{,}000\) iteraciones ofrece por tanto un margen de seguridad holgado
+sin incremento significativo del tiempo de cómputo, que resulta despreciable
+gracias a la vectorización NumPy.
+
+\subsection{Comparación entre Chips}
+
+Aunque el análisis presentado usa el LM741 como dispositivo de referencia,
+el catálogo \texttt{OP\_AMPS} incluye el TL081 (\(\mathrm{GBP} = 3\,\text{MHz}\))
+y el LM318 (\(\mathrm{GBP} = 15\,\text{MHz}\)). Cambiar \texttt{CHIP\_ACTIVO}
+amplía proporcionalmente todas las frecuencias de corte manteniendo las mismas
+ganancias deterministas, de modo que un diseño que requiera \(f_c > 100\,\text{kHz}\)
+con \(|A_v| = 10\) pasaría automáticamente del LM741 (que solo alcanza
+\(100\,\text{kHz}\)) al TL081 (\(300\,\text{kHz}\)) o al LM318
+(\(1{,}5\,\text{MHz}\)) sin modificar ningún otro parámetro del simulador.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Conclusiones}
 
-% Síntesis de los hallazgos principales y recomendaciones para la selección
-% de componentes.
+El simulador desarrollado cumple los tres objetivos planteados al inicio del
+proyecto: modelar el comportamiento de cuatro configuraciones de amplificadores
+operacionales mediante clases Python con herencia y polimorfismo, evaluar la
+sensibilidad estadística de la ganancia frente a tolerancias de componentes
+mediante Monte Carlo vectorizado, y presentar los resultados de forma clara a
+través de gráficas estructuradas y un reporte de texto.
+
+Los hallazgos principales se sintetizan en cuatro puntos:
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{El producto ganancia-ancho de banda es el recurso fundamental.}
+          La relación \(f_c = \mathrm{GBP}/|A_v|\) —validada empíricamente para
+          las tres ganancias del inversor— es la restricción de diseño que más
+          influye en la selección del op-amp. Para aplicaciones de alta ganancia
+          se requieren dispositivos con GBP elevado (TL081 o LM318) para no
+          sacrificar respuesta en frecuencia.
+
+    \item \textbf{Las tolerancias de componentes son críticas a alta ganancia.}
+          La simulación Monte Carlo demuestra que resistencias del \(\pm 10\,\text{\%}\)
+          son inadecuadas para el escenario de Ganancia Alta (\(|A_v| = 100\)),
+          donde la probabilidad de fallo supera valores aceptables en producción.
+          Resistencias del \(\pm 1\,\text{\%}\) eliminan prácticamente el riesgo
+          en todos los escenarios evaluados.
+
+    \item \textbf{El seguidor de voltaje es la configuración más robusta.}
+          Al no depender de componentes de retroalimentación externos para fijar
+          su ganancia unitaria, el seguidor es inmune a la variación de
+          resistencias y aprovecha el máximo ancho de banda disponible del
+          op-amp. Es la elección natural cuando se requiere adaptación de
+          impedancias sin amplificación.
+
+    \item \textbf{El diseño orientado a objetos facilita la extensibilidad.}
+          La jerarquía de clases con \texttt{AmplificadorBase} como contrato
+          abstracto permite añadir nuevas configuraciones —diferenciador,
+          integrador, sumador— sin modificar el simulador, el visualizador ni
+          el generador de reportes. El catálogo \texttt{OP\_AMPS} extiende esta
+          filosofía al plano del hardware: soportar un nuevo chip requiere
+          únicamente agregar una entrada al diccionario.
+\end{enumerate}
+
+Como trabajo futuro, se identifican tres líneas de extensión naturales:
+incorporar el modelo de voltaje de \textit{offset} y corriente de \textit{bias}
+para simular efectos de C.C. en el punto de operación; agregar un análisis de
+estabilidad con criterio de fase para retroalimentaciones capacitivas; y
+ampliar el catálogo de chips con parámetros de ruido (\(e_n\), \(i_n\)) para
+evaluar la figura de ruido de cada configuración.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section*{Referencias}
@@ -791,8 +1153,60 @@ responsabilidad única:
 \appendix
 \section{Código Fuente}
 
-% El código fuente completo del simulador se incluye a continuación.
-% Puede listarse con el paquete listings o minted, o adjuntarse como
-% archivo independiente en el repositorio del proyecto.
+El código fuente completo del simulador se organiza en diez módulos Python.
+Los archivos \texttt{\_\_init\_\_.py} son vacíos y se omiten.
+
+% ── Punto de entrada ──────────────────────────────────────────────────────────
+\subsection*{main.py}
+\lstinputlisting[caption={main.py — punto de entrada, escenarios y orquestación}]
+    {../../main.py}
+
+% ── Amplificadores ────────────────────────────────────────────────────────────
+\newpage
+\subsection*{src/amplificadores/base.py}
+\lstinputlisting[caption={base.py — clase abstracta AmplificadorBase}]
+    {../../src/amplificadores/base.py}
+
+\newpage
+\subsection*{src/amplificadores/inversor.py}
+\lstinputlisting[caption={inversor.py — AmpInversor ($A_v = -R_2/R_1$)}]
+    {../../src/amplificadores/inversor.py}
+
+\newpage
+\subsection*{src/amplificadores/no\_inversor.py}
+\lstinputlisting[caption={no\_inversor.py — AmpNoInversor ($A_v = 1 + R_2/R_1$)}]
+    {../../src/amplificadores/no_inversor.py}
+
+\newpage
+\subsection*{src/amplificadores/seguidor.py}
+\lstinputlisting[caption={seguidor.py — SeguidorVoltaje ($A_v = 1$)}]
+    {../../src/amplificadores/seguidor.py}
+
+\newpage
+\subsection*{src/amplificadores/comparador.py}
+\lstinputlisting[caption={comparador.py — Comparador (salida digital)}]
+    {../../src/amplificadores/comparador.py}
+
+% ── Simulación ────────────────────────────────────────────────────────────────
+\newpage
+\subsection*{src/simulacion/simulador.py}
+\lstinputlisting[caption={simulador.py — SimuladorCircuito}]
+    {../../src/simulacion/simulador.py}
+
+\newpage
+\subsection*{src/simulacion/monte\_carlo.py}
+\lstinputlisting[caption={monte\_carlo.py — AnalizadorMonteCarlo}]
+    {../../src/simulacion/monte_carlo.py}
+
+% ── Visualización y Reporte ───────────────────────────────────────────────────
+\newpage
+\subsection*{src/visualizacion/visualizador.py}
+\lstinputlisting[caption={visualizador.py — VisualizadorResultados}]
+    {../../src/visualizacion/visualizador.py}
+
+\newpage
+\subsection*{src/reporte/generador.py}
+\lstinputlisting[caption={generador.py — GeneradorReporte}]
+    {../../src/reporte/generador.py}
 
 \end{document}

@@ -51,7 +51,7 @@ class VisualizadorResultados:
         # Cerramos la figura para que no se acumule en memoria
         plt.close()
 
-    def plot_bode(self, amp: AmplificadorBase, guardar: bool = True):
+    def plot_bode(self, amp: AmplificadorBase, escenario: str = "", guardar: bool = True):
         """
         Genera el diagrama de Bode del amplificador: magnitud y fase vs frecuencia.
         Panel superior: magnitud en dB (muestra como cae la ganancia con la frecuencia).
@@ -59,15 +59,20 @@ class VisualizadorResultados:
         La linea roja punteada marca la frecuencia de corte fc.
 
         Args:
-            amp     : amplificador a graficar (debe tener respuesta_frecuencia())
-            guardar : True guarda el png, False lo muestra en pantalla
+            amp      : amplificador a graficar (debe tener respuesta_frecuencia())
+            escenario: nombre del escenario para diferenciar archivos entre corridas
+            guardar  : True guarda el png, False lo muestra en pantalla
         """
         freqs, magnitud_db, fase_deg = amp.respuesta_frecuencia()
         fc = amp.calcular_fc()
 
+        titulo = f"Diagrama de Bode — {amp.nombre}"
+        if escenario:
+            titulo += f" ({escenario})"
+
         # Dos paneles que comparten el mismo eje X de frecuencia
         fig, (ax_mag, ax_fase) = plt.subplots(2, 1, figsize=(9, 6), sharex=True)
-        fig.suptitle(f"Diagrama de Bode — {amp.nombre}", fontsize=13, fontweight='bold')
+        fig.suptitle(titulo, fontsize=13, fontweight='bold')
 
         # Panel superior: magnitud en dB
         ax_mag.semilogx(freqs, magnitud_db, linewidth=2, color='steelblue')
@@ -88,7 +93,8 @@ class VisualizadorResultados:
         ax_fase.set_xlabel("Frecuencia (Hz)")
         ax_fase.grid(True, which='both', alpha=0.4)
 
-        nombre_archivo = f"{self._prefijo}bode_{amp.nombre.replace(' ', '_')}.png"
+        sufijo_esc = f"_{escenario}" if escenario else ""
+        nombre_archivo = f"{self._prefijo}bode_{amp.nombre.replace(' ', '_')}{sufijo_esc}.png"
         self._guardar_o_mostrar(nombre_archivo, guardar, subfolder="bode")
 
     def plot_histograma_mc(self, resultados_mc: dict, amp_nombre: str, guardar: bool = True):
